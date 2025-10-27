@@ -76,6 +76,16 @@ def build_app():
     # Run PyInstaller
     PyInstaller.__main__.run(args)
     
+    # Remove quarantine attribute to avoid Gatekeeper issues
+    app_path = os.path.join(DIST_PATH, f"{APP_NAME}.app")
+    try:
+        print("🔓 Removing quarantine attributes...")
+        subprocess.run(['xattr', '-cr', app_path], check=False)
+        print("✅ Quarantine attributes removed")
+    except Exception as e:
+        print(f"⚠️  Could not remove quarantine: {e}")
+        print("💡 Users may need to run: xattr -cr /Applications/DineSysPro.app")
+    
     print(f"✅ Application built: {DIST_PATH}/{APP_NAME}.app")
 
 def create_dmg():

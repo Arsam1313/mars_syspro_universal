@@ -26,6 +26,11 @@ jobs:
       - name: Build macOS app
         run: python3 build_macos.py
       
+      - name: Remove quarantine from .app
+        run: |
+          xattr -cr dist/DineSysPro.app || true
+          xattr -cr dist/*.dmg || true
+      
       - name: Upload macOS artifact
         uses: actions/upload-artifact@v4
         with:
