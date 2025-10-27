@@ -64,65 +64,49 @@ class CUPSManager:
         """
         device_lower = device_name.lower()
         
-        # Driver mapping for common printers
-        driver_keywords = {
-            # Star Micronics
-            'star': ['star', 'starmicronics'],
-            'tsp': ['star', 'tsp'],
-            'mcprint': ['star', 'mcprint'],
-            'mcp': ['star', 'mcprint'],
-            'sm-l': ['star'],
-            'sm-s': ['star'],
-            'sm-t': ['star'],
-            
-            # Epson
-            'epson': ['epson', 'escpos'],
-            'tm-t': ['epson', 'tm'],
-            'tm-m': ['epson', 'tm'],
-            'tm-p': ['epson', 'tm'],
-            'et-': ['epson'],
-            'wf-': ['epson'],
-            'xp-': ['epson'],
-            
-            # Citizen
-            'citizen': ['citizen'],
-            'ct-s': ['citizen'],
-            
-            # Generic ESC/POS
-            'hprt': ['escpos', 'generic'],
-            'rongta': ['escpos', 'generic'],
-            'xprinter': ['escpos', 'generic'],
-        }
+        # For POS printers (Star, Epson ESC/POS), use RAW driver
+        # This allows direct ESC/POS command pass-through
+        pos_printer_keywords = ['star', 'tsp', 'mcprint', 'mcp', 'sm-l', 'sm-s', 'sm-t',
+                               'tm-t', 'tm-m', 'tm-p', 'ct-s', 'hprt', 'rongta', 'xprinter']
         
-        # Try to get available drivers
-        available_drivers = CUPSManager.get_available_drivers()
-        
-        if not available_drivers:
-            # Fallback to generic driver
-            return 'drv:///sample.drv/generic.ppd'
-        
-        # Find matching driver
-        for keyword, search_terms in driver_keywords.items():
+        for keyword in pos_printer_keywords:
             if keyword in device_lower:
-                for driver in available_drivers:
-                    driver_lower = driver.lower()
-                    if any(term in driver_lower for term in search_terms):
-                        # Extract driver name (format: "drivername description")
-                        driver_name = driver.split()[0]
-                        print(f"📦 Found driver: {driver_name}")
-                        return driver_name
+                print(f"📦 Using RAW driver for POS printer (ESC/POS pass-through)")
+                return 'raw'
         
-        # Generic ESC/POS fallback
-        for driver in available_drivers:
-            driver_lower = driver.lower()
-            if 'generic' in driver_lower or 'escpos' in driver_lower or 'raw' in driver_lower:
-                driver_name = driver.split()[0]
-                print(f"📦 Using generic driver: {driver_name}")
-                return driver_name
-        
-        # Last resort: sample generic driver
-        print("📦 Using sample generic driver")
-        return 'drv:///sample.drv/generic.ppd'
+        # For non-POS printers (regular office printers), try to find specific driver
+        try:
+            available_drivers = CUPSManager.get_available_drivers()
+            
+            if not available_drivers:
+                print("📦 Using RAW driver (fallback)")
+                return 'raw'
+            
+            # Search for specific drivers
+            driver_keywords = {
+                'epson': ['epson'],
+                'et-': ['epson'],
+                'wf-': ['epson'],
+                'xp-': ['epson'],
+            }
+            
+            for keyword, search_terms in driver_keywords.items():
+                if keyword in device_lower:
+                    for driver in available_drivers:
+                        driver_lower = driver.lower()
+                        if any(term in driver_lower for term in search_terms):
+                            driver_name = driver.split()[0]
+                            print(f"📦 Found driver: {driver_name}")
+                            return driver_name
+            
+            # Fallback to RAW for unknown printers
+            print("📦 Using RAW driver (fallback)")
+            return 'raw'
+            
+        except Exception as e:
+            print(f"⚠️ Error finding driver: {e}")
+            print("📦 Using RAW driver (fallback)")
+            return 'raw'
     
     @staticmethod
     def register_bluetooth_printer(device_name: str, mac_address: str) -> bool:
