@@ -17,6 +17,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.0.2] - 2024-10-27
+
+### Fixed
+- ✅ macOS architecture compatibility - now builds Universal Binary for both Intel and Apple Silicon (M1/M2/M3)
+- ✅ GitHub Actions permissions for creating releases
+- ✅ Windows console encoding for emoji support
+
+### Added
+- ✅ Swedish installation guide (INSTALLATIONSGUIDE.md)
+- ✅ Universal2 binary support for macOS
+
+### Changed
+- ✅ GitHub Actions now uses macos-14 runner (Apple Silicon)
+- ✅ Removed all Persian documentation (project is Swedish/English only)
+
+---
+
+## [1.0.1] - 2024-10-27
+
+### Fixed
+- ✅ Settings modal fullscreen issue
+- ✅ Windows Unicode errors in build script
+
+---
+
 ## [1.0.0] - 2024-10-27
 
 ### Added
