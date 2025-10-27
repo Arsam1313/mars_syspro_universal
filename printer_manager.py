@@ -221,7 +221,7 @@ def discover_bluetooth_printers(show_all=True):
         except Exception as e:
             print(f"⚠️ BLE scan error: {e}")
         
-        # Use pybluez for classic Bluetooth scan
+        # Use pybluez for classic Bluetooth scan (or system commands as fallback)
         try:
             import bluetooth
             print("📶 Scanning Classic Bluetooth devices...")
@@ -255,8 +255,57 @@ def discover_bluetooth_printers(show_all=True):
                     print(f"  ✅ Printer found: {device_info}")
                     
         except ImportError:
-            print("⚠️ PyBluez not installed - Classic Bluetooth scanning not available")
-            print("💡 Install with: pip install pybluez")
+            # Fallback to macOS system_profiler for paired Bluetooth devices
+            print("📶 Using macOS system_profiler for Bluetooth devices...")
+            try:
+                import subprocess
+                import re
+                result = subprocess.run(
+                    ['system_profiler', 'SPBluetoothDataType', '-json'],
+                    capture_output=True,
+                    text=True,
+                    timeout=10
+                )
+                
+                if result.returncode == 0:
+                    import json
+                    bt_data = json.loads(result.stdout)
+                    
+                    # Parse connected devices
+                    devices_section = bt_data.get('SPBluetoothDataType', [])
+                    for item in devices_section:
+                        devices = item.get('device_connected', [])
+                        for device in devices:
+                            for device_name, device_info_dict in device.items():
+                                if isinstance(device_info_dict, dict):
+                                    addr = device_info_dict.get('device_address', 'Unknown')
+                                    device_info = f"macOS-BT: {addr} - {device_name}"
+                                    all_devices.append(device_info)
+                                    
+                                    # Check if it's a printer
+                                    name_lower = device_name.lower()
+                                    blacklist = ['jbl', 'bose', 'sony', 'beats', 'airpods', 'headphone', 'speaker', 'party']
+                                    is_blacklisted = any(word in name_lower for word in blacklist)
+                                    
+                                    is_printer = (
+                                        any(keyword in name_lower for keyword in 
+                                            ['print', 'epson', 'canon', 'hp', 'brother', 'star', 'hprt', 'pos', 'thermal', 'receipt']) or
+                                        ('series' in name_lower and not is_blacklisted) or
+                                        any(model in name_lower for model in 
+                                            ['mc-print', 'mcp', 'tsp', 'sm-l', 'sm-s', 'sm-t']) or
+                                        any(f'{brand}-' in name_lower or f'{brand} ' in name_lower for brand in 
+                                            ['et', 'wf', 'xp', 'tm', 'mc', 'sm'])
+                                    )
+                                    
+                                    if is_printer and not is_blacklisted:
+                                        found.append(device_info)
+                                        print(f"  ✅ Printer found: {device_info}")
+                    
+                    print(f"📶 Found {len(devices)} connected Bluetooth devices via system_profiler")
+                else:
+                    print("⚠️ Failed to get Bluetooth info from system_profiler")
+            except Exception as e:
+                print(f"⚠️ macOS system_profiler error: {e}")
         except Exception as e:
             print(f"⚠️ Classic Bluetooth scan error: {e}")
             import traceback
