@@ -83,33 +83,34 @@ class UniversalPrinterManager:
             driver_class = self.detect_driver(device_name, address)
             
             # Auto-register Bluetooth printers in CUPS if needed
-            if printer_type == 'bluetooth' and cups_name and device_name:
-                print("🔧 Checking CUPS registration for Bluetooth printer...")
-                
-                # Check if CUPS is available
-                if CUPSManager.is_cups_available():
-                    # Check if printer is already registered
-                    if not CUPSManager.is_printer_registered(cups_name):
-                        print(f"📝 Printer not registered in CUPS, auto-registering...")
-                        
-                        # Extract MAC address from address
-                        mac_address = self._extract_mac_address(address)
-                        
-                        if mac_address:
-                            # Try to auto-register
-                            success = CUPSManager.register_bluetooth_printer(
-                                device_name=cups_name,
-                                mac_address=mac_address
-                            )
-                            
-                            if success:
-                                print(f"✅ Bluetooth printer auto-registered in CUPS: {cups_name}")
-                            else:
-                                print(f"⚠️ Could not auto-register, will try direct connection")
-                    else:
-                        print(f"✅ Printer already registered in CUPS: {cups_name}")
-                else:
-                    print("⚠️ CUPS not available on this system")
+            # 🔴 DISABLED: Bluetooth auto-registration disabled
+            # if printer_type == 'bluetooth' and cups_name and device_name:
+            #     print("🔧 Checking CUPS registration for Bluetooth printer...")
+            #     
+            #     # Check if CUPS is available
+            #     if CUPSManager.is_cups_available():
+            #         # Check if printer is already registered
+            #         if not CUPSManager.is_printer_registered(cups_name):
+            #             print(f"📝 Printer not registered in CUPS, auto-registering...")
+            #             
+            #             # Extract MAC address from address
+            #             mac_address = self._extract_mac_address(address)
+            #             
+            #             if mac_address:
+            #                 # Try to auto-register
+            #                 success = CUPSManager.register_bluetooth_printer(
+            #                     device_name=cups_name,
+            #                     mac_address=mac_address
+            #                 )
+            #                 
+            #                 if success:
+            #                     print(f"✅ Bluetooth printer auto-registered in CUPS: {cups_name}")
+            #                 else:
+            #                     print(f"⚠️ Could not auto-register, will try direct connection")
+            #         else:
+            #             print(f"✅ Printer already registered in CUPS: {cups_name}")
+            #     else:
+            #         print("⚠️ CUPS not available on this system")
             
             # Create driver instance
             self.current_driver = driver_class(
