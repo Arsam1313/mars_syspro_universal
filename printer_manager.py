@@ -195,18 +195,23 @@ def discover_bluetooth_printers(show_all=True):
                 
                 # Add to found if it looks like a printer
                 name_lower = d.name.lower() if d.name else ""
+                
+                # Blacklist non-printer devices
+                blacklist = ['jbl', 'bose', 'sony', 'beats', 'airpods', 'headphone', 'speaker', 'party']
+                is_blacklisted = any(word in name_lower for word in blacklist)
+                
                 # Check for printer keywords or model patterns
                 is_printer = (
                     any(keyword in name_lower for keyword in 
                         ['print', 'epson', 'canon', 'hp', 'brother', 'star', 'hprt', 'pos', 'thermal', 'receipt']) or
-                    'series' in name_lower or  # Many printers have "Series" in name
+                    ('series' in name_lower and not is_blacklisted) or  # Many printers have "Series" in name
                     any(model in name_lower for model in 
                         ['mc-print', 'mcp', 'tsp', 'sm-l', 'sm-s', 'sm-t']) or  # Star printer models
                     any(f'{brand}-' in name_lower or f'{brand} ' in name_lower for brand in 
-                        ['et', 'wf', 'xp', 'l', 'tm', 'tsp', 'mc', 'sm'])  # Common printer model prefixes
+                        ['et', 'wf', 'xp', 'tm', 'mc', 'sm'])  # Common printer model prefixes (removed 'l' - too generic)
                 )
                 
-                if is_printer:
+                if is_printer and not is_blacklisted:
                     found.append(device_info)
                     print(f"  ✅ Printer found: {device_info}")
             
@@ -230,17 +235,22 @@ def discover_bluetooth_printers(show_all=True):
                 
                 # Add to found if it looks like a printer
                 name_lower = name.lower() if name else ""
+                
+                # Blacklist non-printer devices
+                blacklist = ['jbl', 'bose', 'sony', 'beats', 'airpods', 'headphone', 'speaker', 'party']
+                is_blacklisted = any(word in name_lower for word in blacklist)
+                
                 is_printer = (
                     any(keyword in name_lower for keyword in 
                         ['print', 'epson', 'canon', 'hp', 'brother', 'star', 'hprt', 'pos', 'thermal', 'receipt']) or
-                    'series' in name_lower or
+                    ('series' in name_lower and not is_blacklisted) or
                     any(model in name_lower for model in 
                         ['mc-print', 'mcp', 'tsp', 'sm-l', 'sm-s', 'sm-t']) or
                     any(f'{brand}-' in name_lower or f'{brand} ' in name_lower for brand in 
-                        ['et', 'wf', 'xp', 'l', 'tm', 'tsp', 'mc', 'sm'])
+                        ['et', 'wf', 'xp', 'tm', 'mc', 'sm'])
                 )
                 
-                if is_printer:
+                if is_printer and not is_blacklisted:
                     found.append(device_info)
                     print(f"  ✅ Printer found: {device_info}")
                     
