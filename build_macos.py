@@ -51,14 +51,15 @@ def build_app():
     args = [
         MAIN_SCRIPT,
         f'--name={APP_NAME}',
-        '--onefile',
+        '--onedir',  # Changed from onefile to onedir (PyInstaller recommendation)
         '--windowed',
         f'--icon={ICON_PATH}',
         '--clean',
         f'--distpath={DIST_PATH}',
         f'--workpath={BUILD_PATH}',
         '--noconfirm',
-        '--target-arch=universal2',  # Build for both Intel and Apple Silicon
+        # Note: Building for native architecture only (ARM on macos-14 runner)
+        # Universal binaries require all dependencies to be fat binaries
     ]
     
     # Add resources

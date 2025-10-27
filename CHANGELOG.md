@@ -20,17 +20,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.0.2] - 2024-10-27
 
 ### Fixed
-- ✅ macOS architecture compatibility - now builds Universal Binary for both Intel and Apple Silicon (M1/M2/M3)
+- ✅ macOS architecture compatibility - separate builds for Intel and Apple Silicon
 - ✅ GitHub Actions permissions for creating releases
 - ✅ Windows console encoding for emoji support
+- ✅ PyInstaller incompatibility with universal2 binaries
 
 ### Added
 - ✅ Swedish installation guide (INSTALLATIONSGUIDE.md)
-- ✅ Universal2 binary support for macOS
+- ✅ Separate macOS builds: ARM64 (Apple Silicon) and Intel (x86_64)
+- ✅ Automatic architecture detection in build script
 
 ### Changed
-- ✅ GitHub Actions now uses macos-14 runner (Apple Silicon)
+- ✅ Changed from onefile to onedir mode (PyInstaller recommendation)
+- ✅ GitHub Actions now builds for both Intel (macos-13) and ARM (macos-14)
 - ✅ Removed all Persian documentation (project is Swedish/English only)
+
+### Technical Notes
+- Users should download the appropriate version for their Mac:
+  - **ARM64**: For M1/M2/M3 Macs (2020+)
+  - **Intel**: For Intel-based Macs (pre-2020)
 
 ---
 

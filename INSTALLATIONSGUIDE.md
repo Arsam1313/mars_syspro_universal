@@ -2,9 +2,33 @@
 
 ## För macOS användare
 
+### Vilken version ska jag ladda ner?
+
+**Apple Silicon (M1/M2/M3 chip):**
+- Ladda ner: `DineSysPro-X.X.X-macOS-ARM64.dmg`
+- Om din Mac köptes 2020 eller senare, har den troligen Apple Silicon
+
+**Intel Macs:**
+- Ladda ner: `DineSysPro-X.X.X-macOS-Intel.dmg`
+- Äldre Macs (före 2020) har Intel-processorer
+
+**Vet inte vilken du har?**
+1. Klicka på Apple-logotypen (🍎) i övre vänstra hörnet
+2. Välj **Om den här datorn**
+3. Leta efter **Chip** eller **Processor**:
+   - Om det står "Apple M1/M2/M3" → Använd ARM64-versionen
+   - Om det står "Intel" → Använd Intel-versionen
+
 ### Problem: "Du kan inte öppna appen DineSysPro eftersom den inte stöds på den här datorn"
 
-Detta händer eftersom macOS Gatekeeper blockerar osignerade applikationer.
+Detta kan hända av två anledningar:
+
+**1. Fel version nedladdad:**
+- Kontrollera att du har laddat ner rätt version (ARM64 vs Intel)
+- Se guiden ovan för att ta reda på vilken chip din Mac har
+
+**2. macOS Gatekeeper blockerar appen:**
+- Detta händer eftersom applikationen inte är signerad av Apple
 
 ### Snabblösning (Rekommenderas):
 

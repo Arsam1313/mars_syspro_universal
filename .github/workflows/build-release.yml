@@ -11,8 +11,8 @@ permissions:
   packages: write
 
 jobs:
-  build-macos:
-    runs-on: macos-14  # Apple Silicon (M1) for better compatibility
+  build-macos-arm:
+    runs-on: macos-14  # Apple Silicon (M1/M2/M3)
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -27,7 +27,7 @@ jobs:
           pip install -r requirements.txt
           pip install pyinstaller
       
-      - name: Build macOS app
+      - name: Build macOS app (ARM64)
         run: python3 build_macos.py
       
       - name: Remove quarantine from .app
@@ -35,10 +35,52 @@ jobs:
           xattr -cr dist/DineSysPro.app || true
           xattr -cr dist/*.dmg || true
       
-      - name: Upload macOS artifact
+      - name: Rename DMG for ARM
+        run: |
+          if [ -f dist/DineSysPro-1.0.2-macOS.dmg ]; then
+            mv dist/DineSysPro-1.0.2-macOS.dmg dist/DineSysPro-1.0.2-macOS-ARM64.dmg
+          fi
+      
+      - name: Upload macOS ARM artifact
         uses: actions/upload-artifact@v4
         with:
-          name: DineSysPro-macOS
+          name: DineSysPro-macOS-ARM64
+          path: dist/*.dmg
+  
+  build-macos-intel:
+    runs-on: macos-13  # Intel (x86_64)
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install pyinstaller
+      
+      - name: Build macOS app (Intel)
+        run: python3 build_macos.py
+      
+      - name: Remove quarantine from .app
+        run: |
+          xattr -cr dist/DineSysPro.app || true
+          xattr -cr dist/*.dmg || true
+      
+      - name: Rename DMG for Intel
+        run: |
+          if [ -f dist/DineSysPro-1.0.2-macOS.dmg ]; then
+            mv dist/DineSysPro-1.0.2-macOS.dmg dist/DineSysPro-1.0.2-macOS-Intel.dmg
+          fi
+      
+      - name: Upload macOS Intel artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: DineSysPro-macOS-Intel
           path: dist/*.dmg
 
   build-windows:
@@ -67,7 +109,7 @@ jobs:
           path: dist/*.exe
 
   create-release:
-    needs: [build-macos, build-windows]
+    needs: [build-macos-arm, build-macos-intel, build-windows]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
     steps:
@@ -78,9 +120,26 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            DineSysPro-macOS/*
+            DineSysPro-macOS-ARM64/*
+            DineSysPro-macOS-Intel/*
             DineSysPro-Windows/*
           draft: false
           prerelease: false
+          body: |
+            ## DineSysPro v${{ github.ref_name }}
+            
+            ### macOS Installation
+            - **Apple Silicon (M1/M2/M3)**: Download `DineSysPro-*-macOS-ARM64.dmg`
+            - **Intel Macs**: Download `DineSysPro-*-macOS-Intel.dmg`
+            
+            After installation, run in Terminal:
+            ```bash
+            xattr -cr /Applications/DineSysPro.app
+            ```
+            
+            ### Windows Installation
+            - Download and run `DineSysPro.exe`
+            
+            For full installation guide, see [INSTALLATIONSGUIDE.md](https://github.com/Arsam1313/mars_syspro_universal/blob/main/INSTALLATIONSGUIDE.md)
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
