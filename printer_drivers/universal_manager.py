@@ -10,6 +10,7 @@ from .star_driver import StarDriver
 from .epson_driver import EpsonDriver
 from .citizen_driver import CitizenDriver
 from .generic_driver import GenericESCPOSDriver
+from .cups_manager import CUPSManager
 
 
 class UniversalPrinterManager:
@@ -65,7 +66,7 @@ class UniversalPrinterManager:
     def connect(self, printer_type: str, address: str, paper_width: int = 80, 
                 device_name: str = "", cups_name: str = None) -> bool:
         """
-        Connect to printer with auto-detection
+        Connect to printer with auto-detection and automatic CUPS registration
         
         Args:
             printer_type: Type hint (lan, bluetooth, usb) - not used for brand detection
@@ -80,6 +81,35 @@ class UniversalPrinterManager:
         try:
             # Auto-detect driver
             driver_class = self.detect_driver(device_name, address)
+            
+            # Auto-register Bluetooth printers in CUPS if needed
+            if printer_type == 'bluetooth' and cups_name and device_name:
+                print("🔧 Checking CUPS registration for Bluetooth printer...")
+                
+                # Check if CUPS is available
+                if CUPSManager.is_cups_available():
+                    # Check if printer is already registered
+                    if not CUPSManager.is_printer_registered(cups_name):
+                        print(f"📝 Printer not registered in CUPS, auto-registering...")
+                        
+                        # Extract MAC address from address
+                        mac_address = self._extract_mac_address(address)
+                        
+                        if mac_address:
+                            # Try to auto-register
+                            success = CUPSManager.register_bluetooth_printer(
+                                device_name=cups_name,
+                                mac_address=mac_address
+                            )
+                            
+                            if success:
+                                print(f"✅ Bluetooth printer auto-registered in CUPS: {cups_name}")
+                            else:
+                                print(f"⚠️ Could not auto-register, will try direct connection")
+                    else:
+                        print(f"✅ Printer already registered in CUPS: {cups_name}")
+                else:
+                    print("⚠️ CUPS not available on this system")
             
             # Create driver instance
             self.current_driver = driver_class(
@@ -113,6 +143,27 @@ class UniversalPrinterManager:
             import traceback
             traceback.print_exc()
             return False
+    
+    def _extract_mac_address(self, address: str) -> Optional[str]:
+        """
+        Extract MAC address from various address formats
+        
+        Args:
+            address: Address string (e.g., "macOS-BT: 00:11:62:4B:18:FF", "00:11:62:4B:18:FF")
+            
+        Returns:
+            MAC address or None
+        """
+        import re
+        
+        # MAC address pattern: XX:XX:XX:XX:XX:XX
+        mac_pattern = r'([0-9A-Fa-f]{2}:[0-9A-Fa-f]{2}:[0-9A-Fa-f]{2}:[0-9A-Fa-f]{2}:[0-9A-Fa-f]{2}:[0-9A-Fa-f]{2})'
+        
+        match = re.search(mac_pattern, address)
+        if match:
+            return match.group(1)
+        
+        return None
     
     def disconnect(self) -> bool:
         """Disconnect from current printer"""

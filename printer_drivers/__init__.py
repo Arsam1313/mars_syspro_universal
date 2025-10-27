@@ -10,6 +10,7 @@ from .epson_driver import EpsonDriver
 from .citizen_driver import CitizenDriver
 from .generic_driver import GenericESCPOSDriver
 from .universal_manager import UniversalPrinterManager
+from .cups_manager import CUPSManager
 
 __all__ = [
     'BasePrinterDriver',
@@ -17,6 +18,7 @@ __all__ = [
     'EpsonDriver',
     'CitizenDriver',
     'GenericESCPOSDriver',
-    'UniversalPrinterManager'
+    'UniversalPrinterManager',
+    'CUPSManager'
 ]
 
