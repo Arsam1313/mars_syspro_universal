@@ -115,18 +115,29 @@ jobs:
     steps:
       - name: Download all artifacts
         uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      
+      - name: Display structure of downloaded files
+        run: ls -R artifacts
+      
+      - name: Prepare release files
+        run: |
+          mkdir -p release_files
+          find artifacts -type f \( -name "*.dmg" -o -name "*.exe" \) -exec cp {} release_files/ \;
+          ls -la release_files/
       
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          files: |
-            DineSysPro-macOS-ARM64/*
-            DineSysPro-macOS-Intel/*
-            DineSysPro-Windows/*
+          files: release_files/*
           draft: false
           prerelease: false
           body: |
             ## DineSysPro v${{ github.ref_name }}
+            
+            ### 🔧 Critical Fix - App Startup Crash
+            This version fixes the crash that occurred when opening the app. All file paths now work correctly.
             
             ### macOS Installation
             - **Apple Silicon (M1/M2/M3)**: Download `DineSysPro-*-macOS-ARM64.dmg`
@@ -140,6 +151,7 @@ jobs:
             ### Windows Installation
             - Download and run `DineSysPro.exe`
             
-            For full installation guide, see [INSTALLATIONSGUIDE.md](https://github.com/Arsam1313/mars_syspro_universal/blob/main/INSTALLATIONSGUIDE.md)
+            ### Full Guide
+            For detailed installation instructions, see [INSTALLATIONSGUIDE.md](https://github.com/Arsam1313/mars_syspro_universal/blob/main/INSTALLATIONSGUIDE.md)
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
