@@ -22,6 +22,7 @@ RESOURCES = [
     ("sounds", "sounds"),
     ("printer_drivers", "printer_drivers"),
     ("config.json", "."),
+    ("device_info.json", "."),
     ("printer_manager.py", "."),
     ("auto_updater.py", "."),
 ]
