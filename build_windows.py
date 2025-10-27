@@ -31,7 +31,7 @@ RESOURCES = [
     ("sounds", "sounds"),
     ("printer_drivers", "printer_drivers"),
     ("config.json", "."),
-    ("device_info.json", "."),
+    # device_info.json NOT included - generated dynamically per user
     ("printer_manager.py", "."),
     ("auto_updater.py", "."),
 ]

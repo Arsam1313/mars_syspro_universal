@@ -459,12 +459,46 @@ printer.connect(
 
 # [Configuration]
 def get_device_id():
-    path = "device_info.json"
-    if os.path.exists(path):
-        return json.load(open(path))["device_id"]
-    did = f"{uuid.getnode():012X}"
-    json.dump({"device_id": did}, open(path, "w"))
-    return did
+    """
+    Get or create unique device ID
+    Stores in user's home directory to persist across app updates
+    """
+    # Use platform-specific user data directory
+    if platform.system() == 'Darwin':  # macOS
+        app_data_dir = os.path.expanduser('~/Library/Application Support/DineSysPro')
+    elif platform.system() == 'Windows':
+        app_data_dir = os.path.join(os.environ.get('APPDATA', ''), 'DineSysPro')
+    else:  # Linux
+        app_data_dir = os.path.expanduser('~/.config/DineSysPro')
+    
+    # Create directory if it doesn't exist
+    os.makedirs(app_data_dir, exist_ok=True)
+    
+    device_info_path = os.path.join(app_data_dir, 'device_info.json')
+    
+    # Try to read existing device_id
+    if os.path.exists(device_info_path):
+        try:
+            with open(device_info_path, 'r') as f:
+                data = json.load(f)
+                if 'device_id' in data:
+                    return data['device_id']
+        except:
+            pass
+    
+    # Generate new device_id based on MAC address
+    device_id = f"{uuid.getnode():012X}"
+    
+    # Save to file
+    try:
+        with open(device_info_path, 'w') as f:
+            json.dump({"device_id": device_id}, f)
+        print(f"✅ New device ID created: {device_id}")
+        print(f"📁 Saved to: {device_info_path}")
+    except Exception as e:
+        print(f"⚠️ Could not save device_id: {e}")
+    
+    return device_id
 
 def get_device_info():
     return {
