@@ -1,12 +1,19 @@
+# Core dependencies
 pywebview
 requests
-python-escpos
-bleak
-pygame
-pyserial
-pyusb
-pycups
 flask
 flask-cors
 packaging
+
+# Printer drivers
+python-escpos  # Universal ESC/POS (Star, Epson, Citizen, Generic)
+bleak          # Bluetooth Low Energy scanning
+pyserial       # Serial port communication
+pyusb          # USB communication
+pycups         # CUPS integration (macOS/Linux)
+
+# Audio & Media
+pygame
+
+# Build
 pyinstaller

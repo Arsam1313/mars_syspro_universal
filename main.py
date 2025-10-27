@@ -12,10 +12,10 @@ import pygame
 import sys
 import subprocess
 from printer_manager import (
-    PrinterManager,
     discover_lan_printers,
     discover_bluetooth_printers
 )
+from printer_drivers import UniversalPrinterManager
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 
@@ -447,9 +447,15 @@ if config_updated:
     with open(CONFIG_PATH, "w") as f:
         json.dump(config, f, indent=2)
 
-# [Configuration]
-printer = PrinterManager(config["printer"]["type"], config["printer"]["address"])
-printer.connect()
+# [Configuration] Universal Printer Manager with auto-detection
+printer = UniversalPrinterManager()
+printer.connect(
+    printer_type=config["printer"]["type"],
+    address=config["printer"]["address"],
+    paper_width=config["printer"].get("paper_width", 80),
+    device_name=config["printer"].get("device_name", ""),
+    cups_name=config["printer"].get("cups_name", None)
+)
 
 # [Configuration]
 def get_device_id():
@@ -610,8 +616,14 @@ class SettingsBridge:
         config["printer"] = new_cfg
         
         global printer
-        printer = PrinterManager(new_cfg["type"], new_cfg["address"])
-        printer.connect()
+        printer = UniversalPrinterManager()
+        printer.connect(
+            printer_type=new_cfg["type"],
+            address=new_cfg["address"],
+            paper_width=new_cfg.get("paper_width", 80),
+            device_name=new_cfg.get("device_name", ""),
+            cups_name=new_cfg.get("cups_name", None)
+        )
         print("💾 Printer settings updated")
         return "OK"
 
@@ -643,18 +655,20 @@ class SettingsBridge:
                 return f"ERROR: CUPS failed - {direct_result.stderr}"
             
             # [Configuration]
-            print("🖨️ Testing PrinterManager...")
-            test_printer = PrinterManager(
-                mode=current_config["type"], 
-                address=current_config["address"],
-                width=current_config.get("paper_width", 80)
-            )
+            print("🖨️ Testing Universal Printer Manager...")
+            test_printer = UniversalPrinterManager()
             
             # [Configuration]
             print("🔌 Connecting printer...")
-            test_printer.connect()
+            connected = test_printer.connect(
+                printer_type=current_config["type"],
+                address=current_config["address"],
+                paper_width=current_config.get("paper_width", 80),
+                device_name=current_config.get("device_name", ""),
+                cups_name=current_config.get("cups_name", None)
+            )
             
-            if not test_printer.prn:
+            if not connected:
                 print("❌ Printer connection failed!")
                 return "ERROR: Printer connection failed"
             
@@ -664,7 +678,7 @@ class SettingsBridge:
             test_printer.print_text(test_text)
             
             # [Configuration]
-            test_printer.close()
+            test_printer.disconnect()
             
             print("✅ Test print executed successfully")
             return "OK"
