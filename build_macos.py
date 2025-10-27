@@ -72,12 +72,24 @@ def build_app():
     hidden_imports = [
         'pygame',
         'escpos',
+        'escpos.capabilities',
         'cups',
         'flask',
         'flask_cors',
         'requests',
         'packaging',
     ]
+    
+    # Add escpos data files (capabilities.json)
+    try:
+        import escpos
+        escpos_path = os.path.dirname(escpos.__file__)
+        capabilities_json = os.path.join(escpos_path, 'capabilities.json')
+        if os.path.exists(capabilities_json):
+            args.append(f'--add-data={capabilities_json}:escpos')
+            print(f"✅ Adding escpos capabilities.json")
+    except Exception as e:
+        print(f"⚠️ Could not find escpos capabilities.json: {e}")
     
     for imp in hidden_imports:
         args.append(f'--hidden-import={imp}')
