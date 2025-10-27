@@ -172,12 +172,13 @@ def discover_lan_printers(port=9100, timeout=1.0):
     print(f"🖨️ Found {len(found)} LAN printers total")
     return found
 
-def discover_bluetooth_printers():
+def discover_bluetooth_printers(show_all=True):
     """List available Bluetooth devices - compatible with macOS/Windows/Linux"""
     found = []
     all_devices = []
     print("🔵 Scanning Bluetooth devices...")
     print("⏳ This may take 15-20 seconds...")
+    print("💡 Make sure your Star printer is turned on and paired!")
     
     try:
         # Use bleak for BLE scan (Bluetooth Low Energy)
@@ -197,10 +198,12 @@ def discover_bluetooth_printers():
                 # Check for printer keywords or model patterns
                 is_printer = (
                     any(keyword in name_lower for keyword in 
-                        ['print', 'epson', 'canon', 'hp', 'brother', 'star', 'hprt', 'pos', 'thermal']) or
+                        ['print', 'epson', 'canon', 'hp', 'brother', 'star', 'hprt', 'pos', 'thermal', 'receipt']) or
                     'series' in name_lower or  # Many printers have "Series" in name
+                    any(model in name_lower for model in 
+                        ['mc-print', 'mcp', 'tsp', 'sm-l', 'sm-s', 'sm-t']) or  # Star printer models
                     any(f'{brand}-' in name_lower or f'{brand} ' in name_lower for brand in 
-                        ['et', 'wf', 'xp', 'l', 'tm', 'tsp'])  # Common printer model prefixes
+                        ['et', 'wf', 'xp', 'l', 'tm', 'tsp', 'mc', 'sm'])  # Common printer model prefixes
                 )
                 
                 if is_printer:
@@ -229,10 +232,12 @@ def discover_bluetooth_printers():
                 name_lower = name.lower() if name else ""
                 is_printer = (
                     any(keyword in name_lower for keyword in 
-                        ['print', 'epson', 'canon', 'hp', 'brother', 'star', 'hprt', 'pos', 'thermal']) or
+                        ['print', 'epson', 'canon', 'hp', 'brother', 'star', 'hprt', 'pos', 'thermal', 'receipt']) or
                     'series' in name_lower or
+                    any(model in name_lower for model in 
+                        ['mc-print', 'mcp', 'tsp', 'sm-l', 'sm-s', 'sm-t']) or
                     any(f'{brand}-' in name_lower or f'{brand} ' in name_lower for brand in 
-                        ['et', 'wf', 'xp', 'l', 'tm', 'tsp'])
+                        ['et', 'wf', 'xp', 'l', 'tm', 'tsp', 'mc', 'sm'])
                 )
                 
                 if is_printer:
