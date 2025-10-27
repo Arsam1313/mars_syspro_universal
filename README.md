@@ -3,7 +3,7 @@
 [![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](https://github.com/Arsam1313/mars_syspro_universal/releases)
 [![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey.svg)](https://github.com/Arsam1313/mars_syspro_universal)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![Build](https://img.shields.io/badge/build-passing-brightgreen.svg)](https://github.com/Arsam1313/mars_syspro_universal/actions)
+[![Build Status](https://github.com/Arsam1313/mars_syspro_universal/workflows/Build%20and%20Release/badge.svg)](https://github.com/Arsam1313/mars_syspro_universal/actions)
 
 Professional POS printer integration and order management system for restaurants.
 

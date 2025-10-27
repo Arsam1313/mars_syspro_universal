@@ -1000,7 +1000,9 @@ class Bridge:
             f"file://{settings_path}",
             js_api=settings_api,
             width=650,
-            height=900
+            height=900,
+            fullscreen=False,
+            resizable=True
         )
     
     def check_for_updates(self):
