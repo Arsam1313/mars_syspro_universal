@@ -175,37 +175,85 @@ def discover_lan_printers(port=9100, timeout=1.0):
 def discover_bluetooth_printers():
     """List available Bluetooth devices - compatible with macOS/Windows/Linux"""
     found = []
-    print("🔵 Scanning Bluetooth printers...")
+    all_devices = []
+    print("🔵 Scanning Bluetooth devices...")
+    print("⏳ This may take 15-20 seconds...")
     
     try:
-        # Use bleak for BLE scan
+        # Use bleak for BLE scan (Bluetooth Low Energy)
         try:
             from bleak import BleakScanner
-            devices = asyncio.run(BleakScanner.discover(timeout=10))
+            print("📱 Scanning BLE devices...")
+            devices = asyncio.run(BleakScanner.discover(timeout=15))
+            print(f"📱 Found {len(devices)} BLE devices total")
+            
             for d in devices:
-                if d.name and ('print' in d.name.lower() or 'epson' in d.name.lower() or 'canon' in d.name.lower() or 'hp' in d.name.lower()):
-                    found.append(f"{d.address} - {d.name}")
-            print(f"📱 Found {len(found)} BLE devices")
+                device_name = d.name if d.name else "Unknown Device"
+                device_info = f"BLE: {d.address} - {device_name}"
+                all_devices.append(device_info)
+                
+                # Add to found if it looks like a printer
+                if d.name and any(keyword in d.name.lower() for keyword in 
+                    ['print', 'epson', 'canon', 'hp', 'brother', 'star', 'hprt', 'pos', 'thermal']):
+                    found.append(device_info)
+                    print(f"  ✅ Printer found: {device_info}")
+            
         except ImportError:
-            print("⚠️ Bleak not available for BLE scan")
+            print("⚠️ Bleak not installed - BLE scanning not available")
+            print("💡 Install with: pip install bleak")
         except Exception as e:
             print(f"⚠️ BLE scan error: {e}")
         
-        # Use pybluez for classic scan
+        # Use pybluez for classic Bluetooth scan
         try:
             import bluetooth
-            nearby_devices = bluetooth.discover_devices(duration=10, lookup_names=True)
+            print("📶 Scanning Classic Bluetooth devices...")
+            nearby_devices = bluetooth.discover_devices(duration=15, lookup_names=True, flush_cache=True)
+            print(f"📶 Found {len(nearby_devices)} Classic Bluetooth devices")
+            
             for addr, name in nearby_devices:
-                if name and ('print' in name.lower() or 'epson' in name.lower() or 'canon' in name.lower() or 'hp' in name.lower()):
-                    found.append(f"{addr} - {name}")
-            print(f"📶 Found {len(nearby_devices)} classic Bluetooth devices")
+                device_name = name if name else "Unknown Device"
+                device_info = f"Classic: {addr} - {device_name}"
+                all_devices.append(device_info)
+                
+                # Add to found if it looks like a printer
+                if name and any(keyword in name.lower() for keyword in 
+                    ['print', 'epson', 'canon', 'hp', 'brother', 'star', 'hprt', 'pos', 'thermal']):
+                    found.append(device_info)
+                    print(f"  ✅ Printer found: {device_info}")
+                    
         except ImportError:
-            print("⚠️ PyBluez not available for classic Bluetooth scan")
+            print("⚠️ PyBluez not installed - Classic Bluetooth scanning not available")
+            print("💡 Install with: pip install pybluez")
         except Exception as e:
             print(f"⚠️ Classic Bluetooth scan error: {e}")
+            import traceback
+            traceback.print_exc()
         
     except Exception as e:
         print(f"❌ Bluetooth scan failed: {e}")
+        import traceback
+        traceback.print_exc()
     
-    print(f"🔵 Found {len(found)} Bluetooth printers total")
-    return found if found else ["No Bluetooth printers found"]
+    print(f"\n📊 Summary:")
+    print(f"  - Total devices found: {len(all_devices)}")
+    print(f"  - Potential printers: {len(found)}")
+    
+    # If no printers found but devices exist, show all devices
+    if not found and all_devices:
+        print("\n💡 No printers detected automatically. Showing all Bluetooth devices:")
+        for device in all_devices:
+            print(f"  • {device}")
+        return all_devices
+    elif found:
+        print("\n✅ Printers detected:")
+        for printer in found:
+            print(f"  • {printer}")
+        return found
+    else:
+        print("\n❌ No Bluetooth devices found")
+        print("💡 Make sure:")
+        print("  1. Bluetooth is enabled on your computer")
+        print("  2. The printer is turned on and in pairing mode")
+        print("  3. The printer is within range")
+        return ["No Bluetooth devices found"]

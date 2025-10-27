@@ -2,6 +2,7 @@ pywebview
 requests
 python-escpos
 bleak
+pybluez
 pygame
 pyserial
 pyusb
