@@ -1,5 +1,10 @@
 # 🍕 DineSysPro - Restaurant Order Management System
 
+[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](https://github.com/Arsam1313/mars_syspro_universal/releases)
+[![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey.svg)](https://github.com/Arsam1313/mars_syspro_universal)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![Build](https://img.shields.io/badge/build-passing-brightgreen.svg)](https://github.com/Arsam1313/mars_syspro_universal/actions)
+
 Professional POS printer integration and order management system for restaurants.
 
 ## ✨ Features
@@ -13,6 +18,7 @@ Professional POS printer integration and order management system for restaurants
 - 🖥️ **Cross-Platform**: Works on macOS, Windows, and Linux
 - 🎯 **Full Screen Mode**: Runs in full screen for dedicated POS terminals
 - ☕ **Sleep Prevention**: Keeps device awake during operation
+- 🔄 **Auto-Update**: Automatic updates from GitHub releases
 
 ## 🚀 Quick Start
 
@@ -156,15 +162,128 @@ kill -9 <PID>
   - Sound alerts
   - WebView integration
 
+## 📦 Downloads
+
+### Latest Release
+
+Download the latest version for your platform:
+
+- 🍎 **macOS**: [DineSysPro-1.0.0-macOS.dmg](https://github.com/Arsam1313/mars_syspro_universal/releases/latest)
+- 🪟 **Windows**: [DineSysPro-1.0.0-Windows-Setup.exe](https://github.com/Arsam1313/mars_syspro_universal/releases/latest)
+- 🐧 **Linux**: Run from source (see Installation above)
+
+### Installation
+
+**macOS:**
+1. Download the `.dmg` file
+2. Open it and drag `DineSysPro.app` to Applications
+3. Launch from Applications folder
+
+**Windows:**
+1. Download the `.exe` installer
+2. Run the installer
+3. Launch from Start Menu or Desktop shortcut
+
+## 🔄 Auto-Update
+
+DineSysPro includes an automatic update system:
+
+- ✅ Checks for updates on startup
+- ✅ Notifies you when new versions are available
+- ✅ One-click download and installation
+- ✅ Your settings are preserved during updates
+
+### Manual Update Check
+
+```bash
+python3 auto_updater.py
+```
+
+Or use the Settings UI → Check for Updates
+
+## 🛠️ Development
+
+### Building from Source
+
+**macOS:**
+```bash
+python3 build_macos.py
+```
+
+**Windows:**
+```bash
+python build_windows.py
+```
+
+See [BUILD_GUIDE.md](BUILD_GUIDE.md) for detailed instructions.
+
+### Creating a Release
+
+```bash
+./release.sh
+```
+
+See [UPDATE_GUIDE.md](UPDATE_GUIDE.md) for complete release workflow.
+
+## 📚 Documentation
+
+- 📖 [Build Guide](BUILD_GUIDE.md) - How to build applications
+- 🔄 [Update Guide](UPDATE_GUIDE.md) - Release and update process
+- 🎨 [Icon Guide](ICON_GUIDE.md) - Creating custom icons
+- 📋 [API Documentation](API_DOCUMENTATION.md) - API endpoints
+- ✨ [Features](FEATURES.md) - Complete feature list
+- 📝 [Changelog](CHANGELOG.md) - Version history
+
+## 🤝 Contributing
+
+We welcome contributions! Please follow these steps:
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## 🐛 Bug Reports
+
+Found a bug? Please open an issue on GitHub:
+
+[Report a Bug](https://github.com/Arsam1313/mars_syspro_universal/issues/new?template=bug_report.md)
+
+## 💡 Feature Requests
+
+Have an idea? We'd love to hear it:
+
+[Request a Feature](https://github.com/Arsam1313/mars_syspro_universal/issues/new?template=feature_request.md)
+
 ## 🤝 Support
 
-For issues and questions, please contact support.
+For issues and questions:
+
+- 🐛 [GitHub Issues](https://github.com/Arsam1313/mars_syspro_universal/issues)
+- 📧 Email: support@dinesyspro.com
+- 📚 [Wiki](https://github.com/Arsam1313/mars_syspro_universal/wiki)
+
+## 📊 Project Stats
+
+- ⭐ Stars: ![GitHub stars](https://img.shields.io/github/stars/Arsam1313/mars_syspro_universal?style=social)
+- 🍴 Forks: ![GitHub forks](https://img.shields.io/github/forks/Arsam1313/mars_syspro_universal?style=social)
+- 📥 Downloads: ![GitHub downloads](https://img.shields.io/github/downloads/Arsam1313/mars_syspro_universal/total)
+- 📝 Commits: ![GitHub commits](https://img.shields.io/github/commit-activity/m/Arsam1313/mars_syspro_universal)
 
 ## 📄 License
 
-Proprietary - All rights reserved
+MIT License - see [LICENSE](LICENSE) file for details
+
+## 🙏 Acknowledgments
+
+- Built with [PyWebView](https://pywebview.flowrl.com/)
+- Printer support via [python-escpos](https://python-escpos.readthedocs.io/)
+- Sound playback with [pygame](https://www.pygame.org/)
 
 ---
 
 **🍕 DineSysPro** - Professional Restaurant Management System
+
+Made with ❤️ for restaurants worldwide
 
