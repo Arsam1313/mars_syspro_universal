@@ -10,7 +10,7 @@ import shutil
 import subprocess
 
 APP_NAME = "DineSysPro"
-VERSION = "1.0.2"
+VERSION = "1.0.3"
 MAIN_SCRIPT = "main.py"
 ICON_PATH = "icon.icns"
 DIST_PATH = "dist"

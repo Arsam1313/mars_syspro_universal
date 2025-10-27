@@ -1,5 +1,5 @@
 {
-  "version": "1.0.2",
+  "version": "1.0.3",
   "printer": {
     "type": "lan",
     "address": "192.168.1.80",

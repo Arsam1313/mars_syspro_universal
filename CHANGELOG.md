@@ -17,6 +17,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.0.3] - 2024-10-27
+
+### Fixed
+- ✅ **Critical:** App crash on startup - added resource_path helper function
+- ✅ Fixed all file path references to work with PyInstaller bundled app
+- ✅ Fixed undefined ALARM_SOUND variable in API
+- ✅ config.json, sounds/, and ui/ files now properly located in bundled app
+
+### Changed
+- ✅ Added resource_path() helper function for cross-platform file location
+- ✅ All file operations now use resource_path() for PyInstaller compatibility
+
+### Technical Notes
+- This version fixes the startup crash caused by files not being found
+- Uses sys._MEIPASS to locate resources in bundled applications
+- Maintains compatibility with development mode (non-bundled)
+
+---
+
 ## [1.0.2] - 2024-10-27
 
 ### Fixed
