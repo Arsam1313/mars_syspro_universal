@@ -37,8 +37,8 @@ jobs:
       
       - name: Rename DMG for ARM
         run: |
-          if [ -f dist/DineSysPro-1.0.4-macOS.dmg ]; then
-            mv dist/DineSysPro-1.0.4-macOS.dmg dist/DineSysPro-1.0.4-macOS-ARM64.dmg
+          if [ -f dist/DineSysPro-1.0.5-macOS.dmg ]; then
+            mv dist/DineSysPro-1.0.5-macOS.dmg dist/DineSysPro-1.0.5-macOS-ARM64.dmg
           fi
       
       - name: Upload macOS ARM artifact
@@ -73,8 +73,8 @@ jobs:
       
       - name: Rename DMG for Intel
         run: |
-          if [ -f dist/DineSysPro-1.0.4-macOS.dmg ]; then
-            mv dist/DineSysPro-1.0.4-macOS.dmg dist/DineSysPro-1.0.4-macOS-Intel.dmg
+          if [ -f dist/DineSysPro-1.0.5-macOS.dmg ]; then
+            mv dist/DineSysPro-1.0.5-macOS.dmg dist/DineSysPro-1.0.5-macOS-Intel.dmg
           fi
       
       - name: Upload macOS Intel artifact
@@ -136,10 +136,16 @@ jobs:
           body: |
             ## DineSysPro v${{ github.ref_name }}
             
-            ### ✨ New Features & Fixes (v1.0.4)
-            - **Fixed:** Config save error on macOS (Read-only file system)
-            - Config now stored in user directory: `~/Library/Application Support/DineSysPro/`
-            - Settings can be saved successfully without moving app to /Applications
+            ### ✨ New Features & Fixes (v1.0.5)
+            - **Fixed:** Epson office printer support (ET/WF/XP series)
+            - **Fixed:** CPU error when printing to Epson multi-function printers
+            - Added intelligent printer type detection (POS vs Office)
+            - Added IPP (Internet Printing Protocol) support for office printers
+            - ESC/POS commands now only sent to thermal POS printers (TM series)
+            
+            ### 🔧 Previous Features (v1.0.4)
+            - Fixed config save error on macOS (Read-only file system)
+            - Config stored in user directory
             
             ### 🔧 Previous Features (v1.0.3)
             - Universal Printer Driver System with auto-detection

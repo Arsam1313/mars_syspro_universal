@@ -19,25 +19,38 @@ class EpsonDriver(BasePrinterDriver):
         self.printer = None
         self.cups_name = kwargs.get('cups_name', None)
         
+    def is_pos_printer(self, device_name: str = "") -> bool:
+        """Check if this is a POS thermal printer (TM series) vs office printer (ET/WF/XP series)"""
+        pos_keywords = ['tm-t', 'tm-m', 'tm-p', 'tm-u', 'tm-l', 'tm-h']
+        name_lower = device_name.lower()
+        return any(keyword in name_lower for keyword in pos_keywords)
+    
     def connect(self) -> bool:
         """Connect to Epson printer"""
         try:
-            # Try SDK first
-            try:
-                from escpos import printer as escpos_printer
-                
-                # Detect connection type
-                if self.address.count('.') == 3:
-                    # LAN IP address
-                    self.printer = escpos_printer.Network(self.address)
-                    self.connected = True
-                    print(f"✅ Epson printer connected via Network: {self.address}")
-                    return True
+            device_name = self.kwargs.get('device_name', '')
+            
+            # Check if this is a POS printer (thermal receipt printer)
+            if self.is_pos_printer(device_name):
+                # Try ESC/POS SDK for POS printers
+                try:
+                    from escpos import printer as escpos_printer
                     
-            except ImportError:
-                print("⚠️ python-escpos not available")
-            except Exception as e:
-                print(f"⚠️ Epson network connection failed: {e}")
+                    # Detect connection type
+                    if self.address.count('.') == 3:
+                        # LAN IP address
+                        self.printer = escpos_printer.Network(self.address)
+                        self.connected = True
+                        print(f"✅ Epson POS printer connected via Network: {self.address}")
+                        return True
+                        
+                except ImportError:
+                    print("⚠️ python-escpos not available")
+                except Exception as e:
+                    print(f"⚠️ Epson POS network connection failed: {e}")
+            else:
+                # Office printer (ET, WF, XP series) - use CUPS only
+                print(f"ℹ️ Detected Epson office printer: {device_name}")
             
             # Fallback to CUPS
             if self.cups_name:
@@ -75,8 +88,11 @@ class EpsonDriver(BasePrinterDriver):
             return False
         
         try:
-            # Try direct printing first
-            if self.printer:
+            device_name = self.kwargs.get('device_name', '')
+            is_pos = self.is_pos_printer(device_name)
+            
+            # Try direct ESC/POS printing only for POS printers
+            if self.printer and is_pos:
                 max_chars = 32 if self.paper_width == 58 else 48
                 lines = text.split("\n")
                 
@@ -98,7 +114,7 @@ class EpsonDriver(BasePrinterDriver):
                 
                 return True
             
-            # Fallback to CUPS
+            # Use CUPS for office printers
             if self.cups_name:
                 import tempfile
                 import os
@@ -127,6 +143,27 @@ class EpsonDriver(BasePrinterDriver):
                         os.unlink(tmp_path)
                     except:
                         pass
+            
+            # Last resort: Try IPP printing for office printers
+            if not is_pos and self.address.count('.') == 3:
+                print(f"ℹ️ Attempting IPP print to {self.address}")
+                try:
+                    # Try IPP (Internet Printing Protocol) - standard for office printers
+                    result = subprocess.run(
+                        ['/usr/bin/lp', '-h', self.address, '-'],
+                        input=text,
+                        text=True,
+                        capture_output=True,
+                        timeout=30
+                    )
+                    
+                    if result.returncode == 0:
+                        print(f"✅ Epson IPP print successful")
+                        return True
+                    else:
+                        print(f"❌ Epson IPP failed: {result.stderr}")
+                except Exception as e:
+                    print(f"❌ IPP print error: {e}")
             
             return False
             

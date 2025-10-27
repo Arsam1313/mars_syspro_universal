@@ -17,6 +17,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.0.5] - 2024-10-27
+
+### Fixed
+- ✅ **Critical:** Epson office printer support (ET/WF/XP series)
+- ✅ Fixed CPU error when printing to Epson multi-function printers
+- ✅ ESC/POS commands no longer sent to office printers
+
+### Changed
+- ✅ Added intelligent printer type detection (POS thermal vs Office inkjet/laser)
+- ✅ TM-series printers use ESC/POS commands
+- ✅ ET/WF/XP series printers use IPP (Internet Printing Protocol)
+- ✅ Office printers fallback to CUPS or IPP for reliable printing
+
+---
+
 ## [1.0.4] - 2024-10-27
 
 ### Fixed
