@@ -287,6 +287,9 @@ button:disabled {
         <input type="text" id="cups_name" placeholder="e.g., HPRT_TP808" value="HPRT_TP808">
       </div>
 
+      <!-- Hidden field for device name (for auto-detection) -->
+      <input type="hidden" id="device_name" value="">
+
       <div class="form-group">
         <label for="paper_width">Paper Width</label>
         <select id="paper_width">
@@ -378,6 +381,7 @@ async function loadCurrentSettings() {
     document.getElementById('address').value = config.address || '';
     document.getElementById('paper_width').value = config.paper_width || 80;
     document.getElementById('cups_name').value = config.cups_name || 'HPRT_TP808';
+    document.getElementById('device_name').value = config.device_name || '';
     
     // Sound settings and system info - load from main config
     const fullConfig = await api.get_full_config();
@@ -465,10 +469,12 @@ async function handleScan() {
             this.value.split(' ')[0];
           document.getElementById('address').value = address;
           
-          // اگر CUPS name داشت، استخراج کن
+          // Extract CUPS name if available
           if (this.value.includes(' - ')) {
             const name = this.value.split(' - ')[1];
             document.getElementById('cups_name').value = name;
+            // Set device_name for auto-detection
+            document.getElementById('device_name').value = name;
           }
           
           showStatus("✅ Printer selected!");
@@ -568,7 +574,8 @@ async function handleSaveAll() {
       type: document.getElementById('type').value,
       address: document.getElementById('address').value.trim(),
       paper_width: parseInt(document.getElementById('paper_width').value),
-      cups_name: document.getElementById('cups_name').value.trim()
+      cups_name: document.getElementById('cups_name').value.trim(),
+      device_name: document.getElementById('device_name').value.trim()
     };
     
     if (!printerConfig.address) {
