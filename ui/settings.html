@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>⚙️ Settings - DineSysPro</title>
+<style>
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body { 
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  min-height: 100vh;
+  padding: 20px;
+}
+
+.container {
+  max-width: 600px;
+  margin: 0 auto;
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+  overflow: hidden;
+}
+
+.header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 30px 20px;
+  text-align: center;
+}
+
+.header h1 {
+  font-size: 28px;
+  margin-bottom: 8px;
+}
+
+.header p {
+  opacity: 0.9;
+  font-size: 14px;
+}
+
+.content {
+  padding: 30px 20px;
+}
+
+.section {
+  margin-bottom: 35px;
+  padding-bottom: 30px;
+  border-bottom: 2px solid #f0f0f0;
+}
+
+.section:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+.section-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #2c3e50;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.form-group {
+  margin-bottom: 18px;
+}
+
+label { 
+  display: block; 
+  margin-bottom: 8px; 
+  font-weight: 600; 
+  color: #495057;
+  font-size: 14px;
+}
+
+input, select {
+  width: 100%; 
+  padding: 12px 14px; 
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 14px;
+  transition: all 0.3s;
+  font-family: inherit;
+}
+
+input:focus, select:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+button {
+  width: 100%;
+  padding: 14px;
+  margin: 8px 0;
+  border: none; 
+  border-radius: 8px; 
+  font-weight: 600;
+  font-size: 15px;
+  cursor: pointer;
+  transition: all 0.3s;
+  font-family: inherit;
+}
+
+button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+}
+
+button:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+.btn-scan { 
+  background: linear-gradient(135deg, #17a2b8, #138496); 
+  color: white; 
+}
+
+.btn-save { 
+  background: linear-gradient(135deg, #28a745, #20c997); 
+  color: white; 
+}
+
+.btn-test { 
+  background: linear-gradient(135deg, #007bff, #6610f2); 
+  color: white; 
+}
+
+.btn-play {
+  background: linear-gradient(135deg, #ffc107, #ff9800);
+  color: white;
+  padding: 8px 16px;
+  font-size: 13px;
+  margin-top: 8px;
+}
+
+.status {
+  margin: 15px 0;
+  padding: 14px 18px;
+  border-radius: 8px;
+  font-weight: 500;
+  display: none;
+  animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.status.success {
+  background: #d1ecf1;
+  color: #0c5460;
+  border: 1px solid #bee5eb;
+}
+
+.status.error {
+  background: #f8d7da;
+  color: #721c24;
+  border: 1px solid #f5c6cb;
+}
+
+.status.info {
+  background: #d1ecf1;
+  color: #0c5460;
+  border: 1px solid #bee5eb;
+}
+
+#foundPrinters {
+  margin-top: 12px;
+  display: none;
+}
+
+.sound-group {
+  background: #f8f9fa;
+  padding: 15px;
+  border-radius: 8px;
+  margin-bottom: 15px;
+}
+
+.sound-group label {
+  color: #667eea;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.actions {
+  margin-top: 30px;
+  padding-top: 20px;
+  border-top: 2px solid #f0f0f0;
+}
+
+.loading {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin-right: 8px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div class="header">
+    <h1>🍕 DineSysPro Settings</h1>
+    <p>Configure your printer and sound preferences</p>
+  </div>
+
+  <div class="content">
+    <div id="status" class="status"></div>
+
+    <!-- 📊 SYSTEM INFO -->
+    <div class="section">
+      <div class="section-title">
+        📊 System Information
+      </div>
+
+      <div class="form-group">
+        <label>Version</label>
+        <input type="text" id="app_version" readonly style="background: #f5f5f5; cursor: not-allowed;">
+      </div>
+
+      <div class="form-group">
+        <label>Device ID</label>
+        <input type="text" id="device_id" readonly style="background: #f5f5f5; cursor: not-allowed;">
+      </div>
+    </div>
+
+    <!-- 🖨️ PRINTER SETTINGS -->
+    <div class="section">
+      <div class="section-title">
+        🖨️ Printer Configuration
+      </div>
+
+      <div class="form-group">
+        <label for="type">Connection Type</label>
+        <select id="type" onchange="handleTypeChange()">
+          <option value="usb">USB</option>
+          <option value="lan">LAN (Network)</option>
+          <option value="bluetooth">Bluetooth</option>
+        </select>
+      </div>
+
+      <button class="btn-scan" onclick="handleScan()">
+        🔍 Scan for Printers
+      </button>
+
+      <select id="foundPrinters"></select>
+
+      <div class="form-group">
+        <label for="address">Printer Address</label>
+        <input type="text" id="address" placeholder="e.g., 192.168.1.80 or 0x20d1:0x7009">
+      </div>
+
+      <div class="form-group">
+        <label for="cups_name">CUPS Printer Name</label>
+        <input type="text" id="cups_name" placeholder="e.g., HPRT_TP808" value="HPRT_TP808">
+      </div>
+
+      <div class="form-group">
+        <label for="paper_width">Paper Width</label>
+        <select id="paper_width">
+          <option value="58">58mm (32 chars)</option>
+          <option value="80" selected>80mm (48 chars)</option>
+        </select>
+      </div>
+
+      <button class="btn-test" onclick="handleTestPrint()">
+        🖨️ Test Print
+      </button>
+    </div>
+
+    <!-- 🔊 SOUND SETTINGS -->
+    <div class="section">
+      <div class="section-title">
+        🔊 Sound Preferences
+      </div>
+
+      <div class="sound-group">
+        <label>New Order Alert</label>
+        <select id="sound_new_order" onchange="updateSoundPreview('new_order')">
+          <option value="neworder.mp3">Default (neworder.mp3)</option>
+          <option value="neworder1.mp3">Alternative 1 (neworder1.mp3)</option>
+          <option value="neworder2.mp3">Alternative 2 (neworder2.mp3)</option>
+        </select>
+        <button class="btn-play" onclick="testSound('new_order')">
+          ▶️ Play Preview
+        </button>
+      </div>
+
+      <div class="sound-group">
+        <label>Internet Lost Alert</label>
+        <select id="sound_internet_lost" onchange="updateSoundPreview('internet_lost')">
+          <option value="no_internet_alert.mp3">Default (no_internet_alert.mp3)</option>
+        </select>
+        <button class="btn-play" onclick="testSound('internet_lost')">
+          ▶️ Play Preview
+        </button>
+      </div>
+
+      <div class="sound-group">
+        <label>Low Battery Alert</label>
+        <select id="sound_low_battery" onchange="updateSoundPreview('low_battery')">
+          <option value="low_battery.mp3">Default (low_battery.mp3)</option>
+        </select>
+        <button class="btn-play" onclick="testSound('low_battery')">
+          ▶️ Play Preview
+        </button>
+      </div>
+    </div>
+
+    <!-- ACTIONS -->
+    <div class="actions">
+      <button class="btn-save" onclick="handleSaveAll()">
+        💾 Save All Settings
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+// 🔗 API Connection
+let api = null;
+
+// تلاش برای اتصال به API
+function connectAPI() {
+  console.log("🚀 Initializing app...");
+  
+  if (window.pywebview && window.pywebview.api) {
+    api = window.pywebview.api;
+    console.log("✅ API connected!");
+    loadCurrentSettings();
+    return true;
+  } else {
+    console.log("⚠️ API not ready yet");
+    return false;
+  }
+}
+
+// Load current settings
+async function loadCurrentSettings() {
+  try {
+    const config = await api.get_config();
+    console.log("Loaded config:", config);
+    
+    // Printer settings
+    document.getElementById('type').value = config.type || 'usb';
+    document.getElementById('address').value = config.address || '';
+    document.getElementById('paper_width').value = config.paper_width || 80;
+    document.getElementById('cups_name').value = config.cups_name || 'HPRT_TP808';
+    
+    // Sound settings and system info - load from main config
+    const fullConfig = await api.get_full_config();
+    if (fullConfig) {
+      // System information
+      document.getElementById('app_version').value = fullConfig.version || '1.0.0';
+      document.getElementById('device_id').value = fullConfig.device_id || 'Unknown';
+      
+      // Sound settings
+      if (fullConfig.sounds) {
+        document.getElementById('sound_new_order').value = fullConfig.sounds.new_order || 'neworder.mp3';
+        document.getElementById('sound_internet_lost').value = fullConfig.sounds.internet_lost || 'no_internet_alert.mp3';
+        document.getElementById('sound_low_battery').value = fullConfig.sounds.low_battery || 'low_battery.mp3';
+      }
+    }
+    
+    showStatus("✅ Settings loaded", false);
+  } catch (error) {
+    console.error("Load error:", error);
+    showStatus("⚠️ Could not load settings", true);
+  }
+}
+
+// Show status message
+function showStatus(message, isError = false) {
+  const status = document.getElementById('status');
+  status.textContent = message;
+  status.className = 'status ' + (isError ? 'error' : 'success');
+  status.style.display = 'block';
+  
+  setTimeout(() => {
+    status.style.display = 'none';
+  }, 4000);
+}
+
+// Handle connection type change
+function handleTypeChange() {
+  const type = document.getElementById('type').value;
+  const addressInput = document.getElementById('address');
+  
+  if (type === 'lan') {
+    addressInput.placeholder = 'e.g., 192.168.1.80';
+  } else if (type === 'usb') {
+    addressInput.placeholder = 'e.g., 0x20d1:0x7009';
+  } else {
+    addressInput.placeholder = 'Bluetooth address';
+  }
+}
+
+// Scan for printers
+async function handleScan() {
+  if (!api) {
+    showStatus("❌ API not connected", true);
+    return;
+  }
+
+  const type = document.getElementById('type').value;
+  const scanBtn = document.querySelector('.btn-scan');
+  const originalText = scanBtn.innerHTML;
+  
+  scanBtn.disabled = true;
+  scanBtn.innerHTML = '<span class="loading"></span> Scanning...';
+
+  try {
+    console.log(`🔍 Scanning for ${type} printers...`);
+    const results = await api.scan_printers(type);
+    console.log("Scan results:", results);
+    
+    const select = document.getElementById('foundPrinters');
+    select.innerHTML = '<option value="">Select a printer...</option>';
+    
+    if (results && results.length > 0 && !results[0].includes('No') && !results[0].includes('error')) {
+      results.forEach(printer => {
+        const option = document.createElement('option');
+        option.value = printer;
+        option.textContent = printer;
+        select.appendChild(option);
+      });
+      
+      select.style.display = 'block';
+      select.onchange = function() {
+        if (this.value) {
+          const address = this.value.includes(' - ') ? 
+            this.value.split(' - ')[0] : 
+            this.value.split(' ')[0];
+          document.getElementById('address').value = address;
+          
+          // اگر CUPS name داشت، استخراج کن
+          if (this.value.includes(' - ')) {
+            const name = this.value.split(' - ')[1];
+            document.getElementById('cups_name').value = name;
+          }
+          
+          showStatus("✅ Printer selected!");
+        }
+      };
+      
+      showStatus(`✅ Found ${results.length} printer(s)!`);
+    } else {
+      select.style.display = 'none';
+      showStatus("⚠️ No printers found", true);
+    }
+  } catch (error) {
+    console.error("Scan error:", error);
+    showStatus(`❌ Scan failed: ${error.message}`, true);
+  } finally {
+    scanBtn.disabled = false;
+    scanBtn.innerHTML = originalText;
+  }
+}
+
+// تست چاپ
+async function handleTestPrint() {
+  if (!api) {
+    showStatus("❌ API not connected", true);
+    return;
+  }
+
+  const testBtn = document.querySelector('.btn-test');
+  const originalText = testBtn.innerHTML;
+  testBtn.disabled = true;
+  testBtn.innerHTML = '<span class="loading"></span> Testing...';
+
+  try {
+    console.log("🖨️ Sending test print...");
+    const result = await api.test_print();
+    console.log("Test result:", result);
+    
+    if (result && result.includes && result.includes('ERROR')) {
+      showStatus(`❌ ${result}`, true);
+    } else {
+      showStatus("✅ Test print sent to printer!");
+    }
+  } catch (error) {
+    console.error("Test print error:", error);
+    showStatus(`❌ Test failed: ${error.message}`, true);
+  } finally {
+    testBtn.disabled = false;
+    testBtn.innerHTML = originalText;
+  }
+}
+
+// تست صدا
+async function testSound(soundType) {
+  if (!api) {
+    showStatus("❌ API not connected", true);
+    return;
+  }
+
+  try {
+    const soundFile = document.getElementById(`sound_${soundType}`).value;
+    console.log(`🔊 Testing sound: ${soundType} = ${soundFile}`);
+    
+    await api.test_sound(soundType, soundFile);
+    showStatus(`🔊 Playing ${soundFile}...`, false);
+    
+    // توقف بعد از 3 ثانیه
+    setTimeout(async () => {
+      await api.stop_sound();
+    }, 3000);
+  } catch (error) {
+    console.error("Sound test error:", error);
+    showStatus(`❌ Sound test failed: ${error.message}`, true);
+  }
+}
+
+// بروزرسانی پیش‌نمایش صدا
+function updateSoundPreview(soundType) {
+  const soundFile = document.getElementById(`sound_${soundType}`).value;
+  console.log(`Sound changed: ${soundType} = ${soundFile}`);
+}
+
+// Save all settings
+async function handleSaveAll() {
+  if (!api) {
+    showStatus("❌ API not connected", true);
+    return;
+  }
+
+  const saveBtn = document.querySelector('.btn-save');
+  const originalText = saveBtn.innerHTML;
+  saveBtn.disabled = true;
+  saveBtn.innerHTML = '<span class="loading"></span> Saving...';
+
+  try {
+    // Printer config
+    const printerConfig = {
+      type: document.getElementById('type').value,
+      address: document.getElementById('address').value.trim(),
+      paper_width: parseInt(document.getElementById('paper_width').value),
+      cups_name: document.getElementById('cups_name').value.trim()
+    };
+    
+    if (!printerConfig.address) {
+      showStatus("❌ Please enter printer address", true);
+      return;
+    }
+    
+    console.log("Saving printer config:", printerConfig);
+    await api.save_config(printerConfig);
+    
+    // Sound config
+    const soundConfig = {
+      new_order: document.getElementById('sound_new_order').value,
+      internet_lost: document.getElementById('sound_internet_lost').value,
+      low_battery: document.getElementById('sound_low_battery').value
+    };
+    
+    console.log("Saving sound config:", soundConfig);
+    await api.save_sound_config(soundConfig);
+    
+    showStatus("✅ All settings saved successfully!");
+  } catch (error) {
+    console.error("Save error:", error);
+    showStatus(`❌ Save failed: ${error.message}`, true);
+  } finally {
+    saveBtn.disabled = false;
+    saveBtn.innerHTML = originalText;
+  }
+}
+
+// 🎯 اتصال به API هنگام بارگذاری صفحه
+document.addEventListener('DOMContentLoaded', function() {
+  console.log("📄 DOM loaded");
+  
+  if (!connectAPI()) {
+    // تلاش مجدد بعد از 500ms
+    setTimeout(() => {
+      console.log("🔄 Late API detection");
+      connectAPI();
+    }, 500);
+  }
+});
+
+// اتصال به API بعد از بارگذاری کامل
+window.addEventListener('pywebviewready', function() {
+  console.log("🎉 pywebview ready event");
+  connectAPI();
+});
+
+console.log("📜 Script loaded successfully");
+</script>
+
+</body>
+</html>
+

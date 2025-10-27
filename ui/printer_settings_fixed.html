@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>🖨️ Printer Settings</title>
+<style>
+body { 
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+  margin: 20px; 
+  background: #f8f9fa; 
+  line-height: 1.4;
+}
+h2 { 
+  color: #2c3e50; 
+  margin-bottom: 25px; 
+  text-align: center;
+}
+.form-group {
+  margin-bottom: 20px;
+}
+label { 
+  display: block; 
+  margin-bottom: 8px; 
+  font-weight: 600; 
+  color: #495057;
+}
+input, select {
+  width: calc(100% - 20px); 
+  padding: 12px 10px; 
+  border: 2px solid #dee2e6;
+  border-radius: 8px;
+  font-size: 14px;
+  transition: border-color 0.3s;
+}
+input:focus, select:focus {
+  outline: none;
+  border-color: #17a2b8;
+  box-shadow: 0 0 0 3px rgba(23, 162, 184, 0.1);
+}
+button {
+  width: 100%;
+  padding: 14px;
+  margin: 8px 0;
+  border: none; 
+  border-radius: 8px; 
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+button:active {
+  transform: translateY(0);
+}
+.scan { 
+  background: linear-gradient(135deg, #17a2b8, #138496); 
+  color: white; 
+}
+.scan:disabled { 
+  background: #6c757d; 
+  cursor: not-allowed; 
+  transform: none;
+}
+.save { 
+  background: linear-gradient(135deg, #28a745, #20c997); 
+  color: white; 
+}
+.test { 
+  background: linear-gradient(135deg, #007bff, #6610f2); 
+  color: white; 
+}
+#foundPrinters {
+  margin-top: 12px;
+  display: none;
+}
+.status {
+  margin: 15px 0;
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-weight: 500;
+  display: none;
+}
+.status.success {
+  background: #d1ecf1;
+  color: #0c5460;
+  border: 1px solid #bee5eb;
+}
+.status.error {
+  background: #f8d7da;
+  color: #721c24;
+  border: 1px solid #f5c6cb;
+}
+.loading {
+  display: none;
+  text-align: center;
+  padding: 20px;
+}
+.loading.show {
+  display: block;
+}
+</style>
+</head>
+<body>
+  <h2>🖨️ Printer Settings</h2>
+
+  <div class="form-group">
+    <button id="scanBtn" class="scan" onclick="handleScan()">
+      🔍 Scan for Printers
+    </button>
+    <select id="foundPrinters">
+      <option value="">Select a printer...</option>
+    </select>
+    <div class="loading" id="loading">⏳ Scanning for printers...</div>
+  </div>
+
+  <div id="status" class="status"></div>
+
+  <div class="form-group">
+    <label for="type">Printer Type:</label>
+    <select id="type" onchange="handleTypeChange()">
+      <option value="lan">🌐 LAN Network</option>
+      <option value="usb">🔌 USB</option>
+      <option value="bluetooth">🔵 Bluetooth</option>
+    </select>
+  </div>
+
+  <div class="form-group">
+    <label for="address">Printer Address / IP:</label>
+    <input type="text" id="address" placeholder="e.g. 192.168.1.50 or 0x20d1:0x7009">
+  </div>
+
+  <div class="form-group">
+    <label for="paper_width">Paper Width:</label>
+    <select id="paper_width">
+      <option value="58">📄 58mm</option>
+      <option value="80">📄 80mm</option>
+    </select>
+  </div>
+
+  <button class="save" onclick="handleSave()">💾 Save Settings</button>
+  <button class="test" onclick="handleTest()">🖨️ Test Print</button>
+
+<script>
+// Global state
+let api = null;
+let isScanning = false;
+
+// تابع نمایش پیام وضعیت
+function showStatus(message, isError = false) {
+  console.log(`Status: ${message}`);
+  const statusDiv = document.getElementById('status');
+  statusDiv.textContent = message;
+  statusDiv.className = `status ${isError ? 'error' : 'success'}`;
+  statusDiv.style.display = 'block';
+  
+  setTimeout(() => {
+    statusDiv.style.display = 'none';
+  }, 4000);
+}
+
+// تابع تنظیم وضعیت دکمه اسکن
+function setScanState(scanning) {
+  isScanning = scanning;
+  const btn = document.getElementById('scanBtn');
+  const loading = document.getElementById('loading');
+  
+  btn.disabled = scanning;
+  btn.textContent = scanning ? 'Scanning...' : '🔍 Scan for Printers';
+  loading.className = scanning ? 'loading show' : 'loading';
+}
+
+// مدیریت اسکن پرینتر
+async function handleScan() {
+  console.log("🖱️ Scan button clicked!");
+  
+  if (isScanning) {
+    console.log("Already scanning...");
+    return;
+  }
+
+  if (!api) {
+    console.error("API not available");
+    showStatus("❌ Connection error - please restart", true);
+    return;
+  }
+
+  const type = document.getElementById('type').value;
+  console.log(`Starting ${type} scan...`);
+
+  setScanState(true);
+
+  try {
+    const results = await api.scan_printers(type);
+    console.log("Scan results:", results);
+    
+    const select = document.getElementById('foundPrinters');
+    select.innerHTML = '<option value="">Select a printer...</option>';
+    
+    if (results && results.length > 0 && !results[0].includes('No') && !results[0].includes('error')) {
+      results.forEach(printer => {
+        const option = document.createElement('option');
+        option.value = printer;
+        option.textContent = printer;
+        select.appendChild(option);
+      });
+      
+      select.style.display = 'block';
+      select.onchange = function() {
+        if (this.value) {
+          const address = this.value.includes(' - ') ? 
+            this.value.split(' - ')[0] : 
+            this.value.split(' ')[0];
+          document.getElementById('address').value = address;
+          showStatus("✅ Printer selected!");
+        }
+      };
+      
+      showStatus(`✅ Found ${results.length} printer(s)!`);
+    } else {
+      select.style.display = 'none';
+      showStatus("⚠️ No printers found", true);
+    }
+  } catch (error) {
+    console.error("Scan error:", error);
+    showStatus(`❌ Scan failed: ${error.message}`, true);
+  } finally {
+    setScanState(false);
+  }
+}
+
+// مدیریت ذخیره تنظیمات
+async function handleSave() {
+  console.log("💾 Save button clicked!");
+  
+  if (!api) {
+    showStatus("❌ Connection error", true);
+    return;
+  }
+
+  const config = {
+    type: document.getElementById('type').value,
+    address: document.getElementById('address').value.trim(),
+    paper_width: parseInt(document.getElementById('paper_width').value)
+  };
+  
+  if (!config.address) {
+    showStatus("❌ Please enter printer address", true);
+    return;
+  }
+  
+  console.log("Saving config:", config);
+
+  try {
+    await api.save_config(config);
+    showStatus("✅ Settings saved successfully!");
+  } catch (error) {
+    console.error("Save error:", error);
+    showStatus(`❌ Save failed: ${error.message}`, true);
+  }
+}
+
+// مدیریت تست چاپ
+async function handleTest() {
+  console.log("🖨️ Test button clicked!");
+  
+  if (!api) {
+    showStatus("❌ Connection error - please restart", true);
+    return;
+  }
+
+  // تغییر وضعیت دکمه
+  const testBtn = document.querySelector('button.test');
+  const originalText = testBtn.textContent;
+  testBtn.disabled = true;
+  testBtn.textContent = '⏳ Testing...';
+
+  try {
+    console.log("🔗 Calling test_print API...");
+    const result = await api.test_print();
+    console.log("📋 API Result:", result);
+    
+    if (result && result.includes && result.includes('ERROR')) {
+      // API returned an error
+      showStatus(`❌ ${result}`, true);
+    } else {
+      // Success
+      showStatus("✅ Test print sent to printer!");
+    }
+  } catch (error) {
+    console.error("❌ Test print error:", error);
+    showStatus(`❌ Test failed: ${error.message || 'Unknown error'}`, true);
+  } finally {
+    // بازگرداندن وضعیت دکمه
+    testBtn.disabled = false;
+    testBtn.textContent = originalText;
+  }
+}
+
+// مدیریت تغییر نوع پرینتر
+function handleTypeChange() {
+  const type = document.getElementById('type').value;
+  const addressInput = document.getElementById('address');
+  const foundPrinters = document.getElementById('foundPrinters');
+  
+  foundPrinters.style.display = 'none';
+  
+  switch(type) {
+    case 'lan':
+      addressInput.placeholder = 'e.g. 192.168.1.50';
+      break;
+    case 'usb':
+      addressInput.placeholder = 'e.g. 0x20d1:0x7009 or auto-detect';
+      break;
+    case 'bluetooth':
+      addressInput.placeholder = 'e.g. 00:11:22:33:44:55';
+      break;
+  }
+  
+  console.log(`Printer type changed to: ${type}`);
+}
+
+// بارگذاری تنظیمات فعلی
+async function loadConfig() {
+  if (!api) return;
+  
+  try {
+    const config = await api.get_config();
+    console.log("Loaded config:", config);
+    
+    document.getElementById('type').value = config.type || 'lan';
+    document.getElementById('address').value = config.address || '';
+    document.getElementById('paper_width').value = config.paper_width || '80';
+    
+    handleTypeChange(); // Update placeholder
+  } catch (error) {
+    console.error("Failed to load config:", error);
+  }
+}
+
+// راه‌اندازی API و event listenerها
+function initializeApp() {
+  console.log("🚀 Initializing app...");
+  
+  if (window.pywebview && window.pywebview.api) {
+    api = window.pywebview.api;
+    console.log("✅ API connected!");
+    loadConfig();
+    showStatus("🟢 Ready to configure printer");
+  } else {
+    console.log("⚠️ API not ready yet");
+    showStatus("⚠️ Loading...", true);
+  }
+}
+
+// Event listeners
+document.addEventListener('DOMContentLoaded', () => {
+  console.log("📄 DOM loaded");
+  initializeApp();
+});
+
+document.addEventListener('pywebviewready', () => {
+  console.log("🔗 PyWebView ready event fired");
+  initializeApp();
+});
+
+// Fallback initialization
+setTimeout(() => {
+  if (!api && window.pywebview && window.pywebview.api) {
+    console.log("🔄 Late API detection");
+    initializeApp();
+  }
+}, 2000);
+
+// تست API در صورت کلیک
+window.addEventListener('click', () => {
+  if (!api && window.pywebview && window.pywebview.api) {
+    console.log("🔄 API detected on click");
+    initializeApp();
+  }
+}, { once: true });
+
+console.log("📜 Script loaded successfully");
+</script>
+</body>
+</html>

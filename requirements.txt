@@ -1,0 +1,10 @@
+pywebview
+requests
+python-escpos
+bleak
+pygame
+pyserial
+pyusb
+pycups
+flask
+flask-cors
