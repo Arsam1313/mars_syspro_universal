@@ -9,6 +9,8 @@ import socket
 import os
 import urllib3
 import pygame
+import sys
+import subprocess
 from printer_manager import (
     PrinterManager,
     discover_lan_printers,
@@ -34,7 +36,7 @@ BASE_URL = base_url_match.group(1) if base_url_match else "http://localhost:3001
 API_HEARTBEAT = f"{BASE_URL}/api/heartbeat"
 
 CONFIG_PATH = "config.json"
-APP_VERSION = "1.2.3"
+APP_VERSION = config.get("version", "1.0.0")
 
 pygame.mixer.init()
 
@@ -1000,6 +1002,33 @@ class Bridge:
             width=650,
             height=900
         )
+    
+    def check_for_updates(self):
+        """Check for updates from GitHub"""
+        try:
+            from auto_updater import check_for_updates
+            update_info = check_for_updates(silent=True)
+            return update_info
+        except Exception as e:
+            print(f"❌ Update check failed: {e}")
+            return {
+                'available': False,
+                'error': str(e)
+            }
+    
+    def download_update(self):
+        """Download and install update"""
+        try:
+            from auto_updater import auto_update
+            # Run in background thread
+            import threading
+            update_thread = threading.Thread(target=auto_update)
+            update_thread.daemon = True
+            update_thread.start()
+            return "Update process started"
+        except Exception as e:
+            print(f"❌ Update download failed: {e}")
+            return f"ERROR: {e}"
 
 
 # [Configuration]

@@ -8,3 +8,5 @@ pyusb
 pycups
 flask
 flask-cors
+packaging
+pyinstaller

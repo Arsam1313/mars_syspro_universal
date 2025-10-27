@@ -1,0 +1,117 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'  # Trigger on version tags like v1.0.0
+
+jobs:
+  build-macos:
+    name: Build macOS
+    runs-on: macos-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    
+    - name: Build macOS app
+      run: |
+        python build_macos.py
+    
+    - name: Upload macOS artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: macos-build
+        path: dist/*.dmg
+  
+  build-windows:
+    name: Build Windows
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    
+    - name: Build Windows app
+      run: |
+        python build_windows.py
+    
+    - name: Upload Windows artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: windows-build
+        path: dist/*.exe
+  
+  create-release:
+    name: Create GitHub Release
+    needs: [build-macos, build-windows]
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+    
+    - name: Download macOS artifacts
+      uses: actions/download-artifact@v3
+      with:
+        name: macos-build
+        path: dist/
+    
+    - name: Download Windows artifacts
+      uses: actions/download-artifact@v3
+      with:
+        name: windows-build
+        path: dist/
+    
+    - name: Get version from tag
+      id: get_version
+      run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+    
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        name: DineSysPro v${{ steps.get_version.outputs.VERSION }}
+        body: |
+          ## 🎉 DineSysPro v${{ steps.get_version.outputs.VERSION }}
+          
+          ### 📦 Downloads
+          - **macOS**: DineSysPro-${{ steps.get_version.outputs.VERSION }}-macOS.dmg
+          - **Windows**: DineSysPro-${{ steps.get_version.outputs.VERSION }}-Windows-Setup.exe
+          
+          ### 📋 Installation
+          - **macOS**: Open DMG and drag to Applications
+          - **Windows**: Run the installer
+          
+          ### 🔄 Auto-Update
+          This version supports automatic updates. The application will check for updates automatically.
+          
+          ### 📝 Changelog
+          See [CHANGELOG.md](https://github.com/Arsam1313/mars_syspro_universal/blob/main/CHANGELOG.md) for details.
+        files: |
+          dist/*.dmg
+          dist/*.exe
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
