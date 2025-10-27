@@ -37,8 +37,8 @@ jobs:
       
       - name: Rename DMG for ARM
         run: |
-          if [ -f dist/DineSysPro-1.0.3-macOS.dmg ]; then
-            mv dist/DineSysPro-1.0.3-macOS.dmg dist/DineSysPro-1.0.3-macOS-ARM64.dmg
+          if [ -f dist/DineSysPro-1.0.4-macOS.dmg ]; then
+            mv dist/DineSysPro-1.0.4-macOS.dmg dist/DineSysPro-1.0.4-macOS-ARM64.dmg
           fi
       
       - name: Upload macOS ARM artifact
@@ -73,8 +73,8 @@ jobs:
       
       - name: Rename DMG for Intel
         run: |
-          if [ -f dist/DineSysPro-1.0.3-macOS.dmg ]; then
-            mv dist/DineSysPro-1.0.3-macOS.dmg dist/DineSysPro-1.0.3-macOS-Intel.dmg
+          if [ -f dist/DineSysPro-1.0.4-macOS.dmg ]; then
+            mv dist/DineSysPro-1.0.4-macOS.dmg dist/DineSysPro-1.0.4-macOS-Intel.dmg
           fi
       
       - name: Upload macOS Intel artifact
@@ -136,16 +136,16 @@ jobs:
           body: |
             ## DineSysPro v${{ github.ref_name }}
             
-            ### ✨ New Features
+            ### ✨ New Features & Fixes (v1.0.4)
+            - **Fixed:** Config save error on macOS (Read-only file system)
+            - Config now stored in user directory: `~/Library/Application Support/DineSysPro/`
+            - Settings can be saved successfully without moving app to /Applications
+            
+            ### 🔧 Previous Features (v1.0.3)
             - Universal Printer Driver System with auto-detection
             - Multi-brand printer support (Star, Epson, Citizen, Generic ESC/POS)
-            - Automatic CUPS registration for Bluetooth printers (macOS)
             - Improved Bluetooth printer discovery
-            
-            ### 🔧 Improvements
             - Better printer brand detection
-            - Enhanced error handling
-            - Optimized driver selection
             - RAW driver support for POS printers
             
             ### macOS Installation

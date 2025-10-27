@@ -17,6 +17,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.0.4] - 2024-10-27
+
+### Fixed
+- ✅ **Critical:** Config save error on macOS (Read-only file system)
+- ✅ Settings can now be saved from anywhere, not just /Applications
+- ✅ Config.json moved to user-writable directory
+
+### Changed
+- ✅ Config.json now stored in `~/Library/Application Support/DineSysPro/` (macOS)
+- ✅ Config.json now stored in `%APPDATA%/DineSysPro/` (Windows)
+- ✅ Config.json now stored in `~/.config/DineSysPro/` (Linux)
+- ✅ First launch creates user config from default template
+- ✅ User settings persist across app updates
+
+---
+
 ## [1.0.3] - 2024-10-27
 
 ### Fixed

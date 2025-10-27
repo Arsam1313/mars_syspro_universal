@@ -32,10 +32,62 @@ def resource_path(relative_path):
     
     return os.path.join(base_path, relative_path)
 
-# Load configuration from config.json
-config_file = resource_path('config.json')
-with open(config_file, 'r', encoding='utf-8') as f:
-    config = json.load(f)
+# Get user config directory
+def get_config_path():
+    """Get writable config file path in user directory"""
+    if platform.system() == 'Darwin':  # macOS
+        app_data_dir = os.path.expanduser('~/Library/Application Support/DineSysPro')
+    elif platform.system() == 'Windows':
+        app_data_dir = os.path.join(os.environ.get('APPDATA', ''), 'DineSysPro')
+    else:  # Linux
+        app_data_dir = os.path.expanduser('~/.config/DineSysPro')
+    
+    os.makedirs(app_data_dir, exist_ok=True)
+    return os.path.join(app_data_dir, 'config.json')
+
+# Load configuration
+def load_config():
+    """Load config from user directory, or create from default"""
+    user_config_path = get_config_path()
+    
+    # Try to load user config first
+    if os.path.exists(user_config_path):
+        try:
+            with open(user_config_path, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except:
+            pass
+    
+    # If no user config, load default from bundle
+    try:
+        default_config_path = resource_path('config.json')
+        with open(default_config_path, 'r', encoding='utf-8') as f:
+            default_config = json.load(f)
+        
+        # Save to user directory
+        with open(user_config_path, 'w', encoding='utf-8') as f:
+            json.dump(default_config, f, indent=2)
+        
+        print(f"✅ Created user config at: {user_config_path}")
+        return default_config
+    except:
+        # Fallback to hardcoded defaults
+        return {
+            "printer": {"type": "lan", "address": "192.168.1.80", "paper_width": 80},
+            "app_url": "http://localhost:3001/order-reception.html",
+            "base_url": "http://95.217.217.200:3001",
+            "auto_print_orders": True,
+            "sounds": {
+                "new_order": "neworder.mp3",
+                "internet_lost": "no_internet_alert.mp3",
+                "low_battery": "low_battery.mp3"
+            },
+            "version": "1.0.3"
+        }
+
+# Load config
+config = load_config()
+CONFIG_PATH = get_config_path()
 
 # Extract configuration values
 APP_URL = config.get("app_url", "http://localhost:3001/order-reception.html")
@@ -46,8 +98,6 @@ import re
 base_url_match = re.match(r'(https?://[^/]+)', APP_URL)
 BASE_URL = base_url_match.group(1) if base_url_match else "http://localhost:3001"
 API_HEARTBEAT = f"{BASE_URL}/api/heartbeat"
-
-CONFIG_PATH = resource_path("config.json")
 APP_VERSION = config.get("version", "1.0.0")
 
 pygame.mixer.init()

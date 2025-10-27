@@ -19,7 +19,7 @@ import os
 import shutil
 
 APP_NAME = "DineSysPro"
-VERSION = "1.0.3"
+VERSION = "1.0.4"
 MAIN_SCRIPT = "main.py"
 ICON_PATH = "icon/logo_dinesyspro.ico"
 DIST_PATH = "dist"

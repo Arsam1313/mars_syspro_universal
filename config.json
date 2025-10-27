@@ -1,5 +1,5 @@
 {
-  "version": "1.0.3",
+  "version": "1.0.4",
   "printer": {
     "type": "bluetooth",
     "address": "macOS-BT: 00:11:62:4B:18:FF",
