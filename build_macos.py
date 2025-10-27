@@ -42,6 +42,11 @@ def build_app():
     """Build macOS .app bundle"""
     print("🔨 Building macOS application...")
     
+    # Detect current architecture
+    import platform
+    current_arch = platform.machine()
+    print(f"🖥️  Building on: {current_arch}")
+    
     # Prepare PyInstaller arguments
     args = [
         MAIN_SCRIPT,
@@ -53,6 +58,7 @@ def build_app():
         f'--distpath={DIST_PATH}',
         f'--workpath={BUILD_PATH}',
         '--noconfirm',
+        '--target-arch=universal2',  # Build for both Intel and Apple Silicon
     ]
     
     # Add resources
