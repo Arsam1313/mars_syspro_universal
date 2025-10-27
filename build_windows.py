@@ -29,6 +29,7 @@ BUILD_PATH = "build"
 RESOURCES = [
     ("ui", "ui"),
     ("sounds", "sounds"),
+    ("printer_drivers", "printer_drivers"),
     ("config.json", "."),
     ("printer_manager.py", "."),
     ("auto_updater.py", "."),

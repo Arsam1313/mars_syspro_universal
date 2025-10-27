@@ -37,8 +37,8 @@ jobs:
       
       - name: Rename DMG for ARM
         run: |
-          if [ -f dist/DineSysPro-1.0.2-macOS.dmg ]; then
-            mv dist/DineSysPro-1.0.2-macOS.dmg dist/DineSysPro-1.0.2-macOS-ARM64.dmg
+          if [ -f dist/DineSysPro-1.0.3-macOS.dmg ]; then
+            mv dist/DineSysPro-1.0.3-macOS.dmg dist/DineSysPro-1.0.3-macOS-ARM64.dmg
           fi
       
       - name: Upload macOS ARM artifact
@@ -73,8 +73,8 @@ jobs:
       
       - name: Rename DMG for Intel
         run: |
-          if [ -f dist/DineSysPro-1.0.2-macOS.dmg ]; then
-            mv dist/DineSysPro-1.0.2-macOS.dmg dist/DineSysPro-1.0.2-macOS-Intel.dmg
+          if [ -f dist/DineSysPro-1.0.3-macOS.dmg ]; then
+            mv dist/DineSysPro-1.0.3-macOS.dmg dist/DineSysPro-1.0.3-macOS-Intel.dmg
           fi
       
       - name: Upload macOS Intel artifact
@@ -136,8 +136,17 @@ jobs:
           body: |
             ## DineSysPro v${{ github.ref_name }}
             
-            ### 🔧 Critical Fix - App Startup Crash
-            This version fixes the crash that occurred when opening the app. All file paths now work correctly.
+            ### ✨ New Features
+            - Universal Printer Driver System with auto-detection
+            - Multi-brand printer support (Star, Epson, Citizen, Generic ESC/POS)
+            - Automatic CUPS registration for Bluetooth printers (macOS)
+            - Improved Bluetooth printer discovery
+            
+            ### 🔧 Improvements
+            - Better printer brand detection
+            - Enhanced error handling
+            - Optimized driver selection
+            - RAW driver support for POS printers
             
             ### macOS Installation
             - **Apple Silicon (M1/M2/M3)**: Download `DineSysPro-*-macOS-ARM64.dmg`
@@ -150,6 +159,12 @@ jobs:
             
             ### Windows Installation
             - Download and run `DineSysPro.exe`
+            
+            ### Supported Printers
+            - Star Micronics (TSP, mC-Print, SM-L/S/T series)
+            - Epson (TM-T, TM-m, TM-P, ET, WF, XP series)
+            - Citizen (CT-S, CL-S, CMP series)
+            - Generic ESC/POS (HPRT, Rongta, Xprinter, Bixolon, Zebra)
             
             ### Full Guide
             For detailed installation instructions, see [INSTALLATIONSGUIDE.md](https://github.com/Arsam1313/mars_syspro_universal/blob/main/INSTALLATIONSGUIDE.md)
