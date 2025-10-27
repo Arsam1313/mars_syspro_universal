@@ -193,8 +193,17 @@ def discover_bluetooth_printers():
                 all_devices.append(device_info)
                 
                 # Add to found if it looks like a printer
-                if d.name and any(keyword in d.name.lower() for keyword in 
-                    ['print', 'epson', 'canon', 'hp', 'brother', 'star', 'hprt', 'pos', 'thermal']):
+                name_lower = d.name.lower() if d.name else ""
+                # Check for printer keywords or model patterns
+                is_printer = (
+                    any(keyword in name_lower for keyword in 
+                        ['print', 'epson', 'canon', 'hp', 'brother', 'star', 'hprt', 'pos', 'thermal']) or
+                    'series' in name_lower or  # Many printers have "Series" in name
+                    any(f'{brand}-' in name_lower or f'{brand} ' in name_lower for brand in 
+                        ['et', 'wf', 'xp', 'l', 'tm', 'tsp'])  # Common printer model prefixes
+                )
+                
+                if is_printer:
                     found.append(device_info)
                     print(f"  ✅ Printer found: {device_info}")
             
@@ -217,8 +226,16 @@ def discover_bluetooth_printers():
                 all_devices.append(device_info)
                 
                 # Add to found if it looks like a printer
-                if name and any(keyword in name.lower() for keyword in 
-                    ['print', 'epson', 'canon', 'hp', 'brother', 'star', 'hprt', 'pos', 'thermal']):
+                name_lower = name.lower() if name else ""
+                is_printer = (
+                    any(keyword in name_lower for keyword in 
+                        ['print', 'epson', 'canon', 'hp', 'brother', 'star', 'hprt', 'pos', 'thermal']) or
+                    'series' in name_lower or
+                    any(f'{brand}-' in name_lower or f'{brand} ' in name_lower for brand in 
+                        ['et', 'wf', 'xp', 'l', 'tm', 'tsp'])
+                )
+                
+                if is_printer:
                     found.append(device_info)
                     print(f"  ✅ Printer found: {device_info}")
                     
