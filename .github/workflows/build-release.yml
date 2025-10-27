@@ -3,8 +3,8 @@ name: Build and Release
 on:
   push:
     tags:
-      - 'v*'  # فقط وقتی tag بزنی (مثل v1.0.0)
-  workflow_dispatch:  # یا دستی اجرا کنی
+      - 'v*'  # Only on version tags (e.g., v1.0.0)
+  workflow_dispatch:  # Manual trigger
 
 jobs:
   build-macos:

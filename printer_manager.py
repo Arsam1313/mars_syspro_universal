@@ -13,30 +13,30 @@ class PrinterManager:
             if self.mode == "lan":
                 self.prn = printer.Network(self.address)
             elif self.mode == "usb":
-                # استفاده از CUPS برای پرینترهای USB در macOS/Linux
+                # Use CUPS for USB printers on macOS/Linux
                 try:
-                    # ابتدا تلاش برای استفاده از نام پرینتر CUPS
+                    # Try using CUPS printer name first
                     if hasattr(printer, 'CupsPrinter'):
-                        # جستجو برای پرینتر HPRT TP808
+                        # Search for HPRT TP808 printer
                         self.prn = printer.CupsPrinter("HPRT TP808")
                         print("🖨️ Connected via CUPS: HPRT TP808")
                     else:
                         raise Exception("CUPS not available")
                 except:
                     try:
-                        # fallback به File printer (برای macOS)
+                        # Fallback to File printer (for macOS)
                         self.prn = printer.File("/dev/usb/lp0")
                         print("🔌 Connected via File interface")
                     except:
-                        # fallback نهایی به USB مستقیم
+                        # Final fallback to direct USB
                         if ':' in str(self.address):
                             vendor_id, product_id = self.address.split(':')
                             
-                            # استفاده از backend مناسب برای macOS
+                            # Use appropriate backend for macOS
                             import usb.core
                             import usb.backend.libusb1
                             
-                            # تنظیم backend
+                            # Set backend
                             backend = usb.backend.libusb1.get_backend()
                             
                             self.prn = printer.Usb(
@@ -46,7 +46,7 @@ class PrinterManager:
                             )
                             print(f"🔌 USB Direct: {vendor_id}:{product_id}")
                         else:
-                            # پیدا کردن خودکار
+                            # Auto-detect printer
                             import usb.core
                             device = usb.core.find(idVendor=0x20d1, idProduct=0x7009)
                             if device:
@@ -68,12 +68,12 @@ class PrinterManager:
             print("⚠️ Printer not connected.")
             return
         try:
-            # تنظیمات چاپ برای نسخه جدید python-escpos
+            # Print settings for newer python-escpos versions
             try:
-                # نسخه جدید
+                # New version
                 self.prn.set(align="left", font="a", bold=True)
             except TypeError:
-                # نسخه قدیم
+                # Old version
                 self.prn.set(align="left", font="a", text_type="B")
             
             if self.width == 58:
@@ -83,19 +83,19 @@ class PrinterManager:
                 
             lines = text.split("\n")
             for line in lines:
-                if line.strip():  # فقط خطوط غیر خالی
+                if line.strip():  # Only non-empty lines
                     self.prn.text(line[:max_chars] + "\n")
                 else:
-                    self.prn.text("\n")  # خط خالی
+                    self.prn.text("\n")  # Empty line
             
-            # اضافه کردن خط خالی در انتها
+            # Add empty line at the end
             self.prn.text("\n")
             
-            # برش کاغذ
+            # Cut paper
             try:
                 self.prn.cut()
             except:
-                # اگر cut کار نکرد، partial cut امتحان کن
+                # Try partial cut if full cut doesn't work
                 try:
                     self.prn.cut(mode='PART')
                 except:
@@ -117,21 +117,21 @@ import threading
 from concurrent.futures import ThreadPoolExecutor
 
 def get_local_ip_range():
-    """تشخیص محدوده IP محلی"""
+    """Detect local IP range"""
     try:
-        # اتصال موقت برای تشخیص IP محلی
+        # Temporary connection to detect local IP
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         s.settimeout(0)
         s.connect(('10.254.254.254', 1))
         local_ip = s.getsockname()[0]
         s.close()
-        # استخراج سه بخش اول IP (مثل 192.168.1)
+        # Extract first three parts of IP (e.g., 192.168.1)
         return '.'.join(local_ip.split('.')[:-1]) + '.'
     except:
         return '192.168.1.'
 
 def scan_ip(ip, port, timeout):
-    """اسکن یک IP مشخص"""
+    """Scan a specific IP address"""
     try:
         s = socket.socket()
         s.settimeout(timeout)
@@ -142,19 +142,19 @@ def scan_ip(ip, port, timeout):
         return None
 
 def discover_lan_printers(port=9100, timeout=1.0):
-    """اسکن هوشمند LAN برای پرینترهای فعال - با استفاده از Thread Pool"""
+    """Smart LAN scan for active printers - using Thread Pool"""
     found = []
     print("🌐 Scanning LAN printers...")
     
-    # تشخیص محدوده IP محلی
+    # Detect local IP range
     subnet = get_local_ip_range()
     print(f"🔍 Scanning subnet: {subnet}*")
     
-    # لیست IP های مشترک برای اسکن سریع
+    # List of common IPs for faster scan
     common_ips = [1, 10, 20, 50, 100, 101, 102, 150, 200, 254]
     all_ips = common_ips + [i for i in range(1, 255) if i not in common_ips]
     
-    # استفاده از Thread Pool برای اسکن موثر
+    # Use Thread Pool for efficient scanning
     with ThreadPoolExecutor(max_workers=50) as executor:
         futures = []
         for i in all_ips:
@@ -162,7 +162,7 @@ def discover_lan_printers(port=9100, timeout=1.0):
             future = executor.submit(scan_ip, ip, port, timeout)
             futures.append(future)
         
-        # جمع‌آوری نتایج
+        # Collect results
         for future in futures:
             result = future.result()
             if result:
@@ -173,12 +173,12 @@ def discover_lan_printers(port=9100, timeout=1.0):
     return found
 
 def discover_bluetooth_printers():
-    """لیست دستگاه‌های بلوتوث موجود - سازگار با macOS/Windows/Linux"""
+    """List available Bluetooth devices - compatible with macOS/Windows/Linux"""
     found = []
     print("🔵 Scanning Bluetooth printers...")
     
     try:
-        # استفاده از bleak برای اسکن BLE
+        # Use bleak for BLE scan
         try:
             from bleak import BleakScanner
             devices = asyncio.run(BleakScanner.discover(timeout=10))
@@ -191,7 +191,7 @@ def discover_bluetooth_printers():
         except Exception as e:
             print(f"⚠️ BLE scan error: {e}")
         
-        # استفاده از pybluez برای اسکن کلاسیک
+        # Use pybluez for classic scan
         try:
             import bluetooth
             nearby_devices = bluetooth.discover_devices(duration=10, lookup_names=True)
