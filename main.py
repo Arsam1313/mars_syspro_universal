@@ -21,8 +21,20 @@ from flask_cors import CORS
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
+# Helper function to get resource path (works with PyInstaller)
+def resource_path(relative_path):
+    """Get absolute path to resource, works for dev and for PyInstaller"""
+    try:
+        # PyInstaller creates a temp folder and stores path in _MEIPASS
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(".")
+    
+    return os.path.join(base_path, relative_path)
+
 # Load configuration from config.json
-with open('config.json', 'r', encoding='utf-8') as f:
+config_file = resource_path('config.json')
+with open(config_file, 'r', encoding='utf-8') as f:
     config = json.load(f)
 
 # Extract configuration values
@@ -35,7 +47,7 @@ base_url_match = re.match(r'(https?://[^/]+)', APP_URL)
 BASE_URL = base_url_match.group(1) if base_url_match else "http://localhost:3001"
 API_HEARTBEAT = f"{BASE_URL}/api/heartbeat"
 
-CONFIG_PATH = "config.json"
+CONFIG_PATH = resource_path("config.json")
 APP_VERSION = config.get("version", "1.0.0")
 
 pygame.mixer.init()
@@ -105,7 +117,10 @@ def api_alarm_start():
             return jsonify({"success": False, "message": "Alarm already playing"})
         
         print("🔔 Starting alarm from Java API...")
-        pygame.mixer.music.load(ALARM_SOUND)
+        # Use new_order sound as default alarm
+        sound_file = config["sounds"].get("new_order", "neworder.mp3")
+        alarm_sound_path = resource_path(f"sounds/{sound_file}")
+        pygame.mixer.music.load(alarm_sound_path)
         pygame.mixer.music.play(loops=loops)
         alarm_playing = True
         
@@ -687,7 +702,7 @@ class SettingsBridge:
     def test_sound(self, sound_type, sound_file):
         """Function description"""
         try:
-            sound_path = f"sounds/{sound_file}"
+            sound_path = resource_path(f"sounds/{sound_file}")
             pygame.mixer.music.load(sound_path)
             pygame.mixer.music.play()
             print(f"🔊 Testing sound: {sound_type} = {sound_file}")
@@ -715,7 +730,7 @@ class Bridge:
         try:
             # [Configuration]
             sound_file = config["sounds"].get(sound_type, "neworder.mp3")
-            sound_path = f"sounds/{sound_file}"
+            sound_path = resource_path(f"sounds/{sound_file}")
             
             pygame.mixer.music.load(sound_path)
             pygame.mixer.music.play(-1)  # infinite loop
@@ -993,7 +1008,7 @@ class Bridge:
     def open_settings(self):
         """Function description"""
         settings_api = SettingsBridge()
-        settings_path = os.path.abspath(os.path.join("ui", "settings.html"))
+        settings_path = resource_path(os.path.join("ui", "settings.html"))
         print("⚙️ Opening settings:", settings_path)
         webview.create_window(
             "⚙️ Settings - DineSysPro",
