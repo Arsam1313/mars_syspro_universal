@@ -1,11 +1,11 @@
 {
   "version": "1.0.6",
   "printer": {
-    "type": "bluetooth",
-    "address": "macOS-BT: 00:11:62:4B:18:FF",
+    "type": "",
+    "address": "",
     "paper_width": 80,
-    "cups_name": "mcprint3",
-    "device_name": "mcprint3"
+    "cups_name": "",
+    "device_name": ""
   },
   "app_url": "http://95.217.217.200:3001/order-reception.html",
   "sounds": {

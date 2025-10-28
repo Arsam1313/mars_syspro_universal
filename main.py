@@ -13,9 +13,11 @@ import sys
 import subprocess
 from printer_manager import (
     discover_lan_printers,
-    discover_bluetooth_printers
+    discover_bluetooth_printers,
+    PrinterManager
 )
-from printer_drivers import UniversalPrinterManager
+from printer_drivers.universal_manager import UniversalPrinterManager
+
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 
@@ -318,6 +320,17 @@ def api_battery_alert():
         return jsonify({"success": False, "error": str(e)}), 500
 
 
+@app.route('/settings')
+def settings_page():
+    """Serve the settings HTML page"""
+    try:
+        settings_html_path = resource_path("ui/settings.html")
+        with open(settings_html_path, 'r', encoding='utf-8') as f:
+            return f.read()
+    except Exception as e:
+        return f"<h1>Error loading settings page</h1><p>{str(e)}</p>", 500
+
+
 # ================================================================================
 #                    NOTE: Socket.IO is managed by order-reception.html
 #                    No Socket.IO client needed in Python app
@@ -497,15 +510,43 @@ if config_updated:
     with open(CONFIG_PATH, "w") as f:
         json.dump(config, f, indent=2)
 
-# [Configuration] Universal Printer Manager with auto-detection
-printer = UniversalPrinterManager()
-printer.connect(
-    printer_type=config["printer"]["type"],
-    address=config["printer"]["address"],
-    paper_width=config["printer"].get("paper_width", 80),
-    device_name=config["printer"].get("device_name", ""),
-    cups_name=config["printer"].get("cups_name", None)
+# [Configuration] Universal Printer Manager (Multi-brand ESC/POS)
+printer = PrinterManager()
+connected = printer.auto_connect(
+    preferred_type=config["printer"].get("type", "auto"),
+    address=config["printer"].get("address", None),
+    width=config["printer"].get("paper_width", 80)
 )
+
+# پرینت خوش‌آمدگویی بعد از اتصال موفق
+if connected:
+    try:
+        welcome_text = """
+================================
+   DineSysPro Connected!
+================================
+Printer: {mode} - {addr}
+Version: {ver}
+Time: {time}
+================================
+
+Ready to receive orders!
+
+""".format(
+            mode=printer.mode.upper(),
+            addr=printer.address if printer.address else printer.usb_device[2] if printer.usb_device else "Auto",
+            ver=APP_VERSION,
+            time=time.strftime("%Y-%m-%d %H:%M:%S")
+        )
+        result = printer.print_text(welcome_text)
+        if result == "OK":
+            print("✅ Welcome receipt printed successfully")
+        else:
+            print(f"⚠️ Welcome receipt failed: {result}")
+    except Exception as e:
+        print(f"⚠️ Welcome print error: {e}")
+else:
+    print("⚠️ Printer not connected - skipping welcome print")
 
 # [Configuration]
 def get_device_id():
@@ -538,7 +579,7 @@ def get_device_id():
     
     # Generate new device_id based on MAC address
     device_id = f"{uuid.getnode():012X}"
-    
+    #device_id = "8c4ca5f1ff3fa0f4"
     # Save to file
     try:
         with open(device_info_path, 'w') as f:
@@ -552,7 +593,7 @@ def get_device_id():
 
 def get_device_info():
     return {
-        "device_id": get_device_id(),
+        "device_id": "8c4ca5f1ff3fa0f4",#get_device_id(),
         "device_info": {
             "platform": platform.system(),
             "system": "python-desktop",
@@ -595,13 +636,12 @@ print("✅ Internet and WebView monitoring started")
 
 
 # [Configuration]
+# [Configuration]
 class SettingsBridge:
     def get_config(self):
-        """Function description"""
         return config["printer"]
     
     def get_full_config(self):
-        """Get full configuration including device_id"""
         full_config = config.copy()
         full_config['device_id'] = get_device_id()
         return full_config
@@ -610,72 +650,23 @@ class SettingsBridge:
         print(f"🧩 scan_printers called with type={conn_type}")
         try:
             if conn_type == "lan":
-                result = discover_lan_printers()
-                return result if result else ["No LAN printers found"]
+                return discover_lan_printers() or ["No LAN printers found"]
             elif conn_type == "bluetooth":
-                result = discover_bluetooth_printers()
-                return result if result else ["No Bluetooth printers found"]
+                return discover_bluetooth_printers() or ["No Bluetooth printers found"]
             elif conn_type == "usb":
-                # [Configuration]
                 try:
                     import usb.core
                     found_devices = []
-                    
-                    # [Configuration]
                     common_printers = [
-                        (0x04b8, 0x0202, "Epson TM-T20"),
-                        (0x04b8, 0x0005, "Epson TMT20II"),
-                        (0x0416, 0x5011, "Winbond Thermal"),
-                        (0x20d1, 0x7007, "Xprinter XP-58"),
                         (0x20d1, 0x7009, "HPRT TP808"),
-                        (0x1504, 0x0006, "Sewoo LK-P21"),
-                        (0x0dd4, 0x0006, "Thermal Printer"),
-                        # [Configuration]
+                        (0x04b8, 0x0005, "Epson TM-T20II"),
                         (0x0519, 0x0001, "Star TSP100"),
-                        (0x0519, 0x0002, "Star TSP650"),
-                        (0x0519, 0x0003, "Star TSP700"),
-                        (0x0519, 0x0004, "Star TSP800"),
-                        (0x0519, 0x0020, "Star mC-Print2"),
-                        (0x0519, 0x0021, "Star mC-Print3"),
-                        (0x0519, 0x0023, "Star mPOP"),
-                        (0x0519, 0x0027, "Star SM-L200"),
-                        (0x0519, 0x0028, "Star SM-L300"),
-                        (0x0519, 0x002b, "Star SM-T300"),
-                        (0x0519, 0x002c, "Star SM-T400i"),
                     ]
-                    
-                    # [Configuration]
                     for vid, pid, name in common_printers:
                         device = usb.core.find(idVendor=vid, idProduct=pid)
-                        if device is not None:
+                        if device:
                             found_devices.append(f"{hex(vid)}:{hex(pid)} - {name}")
-                    
-                    # [Configuration]
-                    devices = usb.core.find(find_all=True, bDeviceClass=7)
-                    for device in devices:
-                        device_id = f"{hex(device.idVendor)}:{hex(device.idProduct)}"
-                        if not any(device_id in found for found in found_devices):
-                            try:
-                                name = usb.util.get_string(device, device.iProduct) or "Unknown Printer"
-                                found_devices.append(f"{device_id} - {name}")
-                            except:
-                                found_devices.append(f"{device_id} - USB Printer")
-                    
-                    # [Configuration]
-                    import serial.tools.list_ports
-                    ports = serial.tools.list_ports.comports()
-                    for port in ports:
-                        if "USB" in port.description and any(keyword in port.description.lower() for keyword in ["print", "thermal", "pos", "receipt"]):
-                            found_devices.append(f"{port.device} - {port.description}")
-                    
-                    return found_devices if found_devices else ["No USB printers found"]
-                    
-                except ImportError:
-                    # [Configuration]
-                    import serial.tools.list_ports
-                    ports = serial.tools.list_ports.comports()
-                    usb_devices = [f"{port.device} - {port.description}" for port in ports if "USB" in port.description]
-                    return usb_devices if usb_devices else ["No USB devices found"]
+                    return found_devices or ["No USB printers found"]
                 except Exception as e:
                     return [f"USB scan error: {str(e)}"]
             else:
@@ -685,94 +676,162 @@ class SettingsBridge:
             return [f"Scan error: {str(e)}"]
 
     def save_config(self, new_cfg):
-        # Re-read config to preserve all fields
-        with open(CONFIG_PATH, "r") as f:
-            full_config = json.load(f)
-        
-        # Update only printer settings
-        full_config["printer"] = new_cfg
-        
-        # Write back complete config
-        with open(CONFIG_PATH, "w") as f:
-            json.dump(full_config, f, indent=2)
-        
-        # Update global config
-        config["printer"] = new_cfg
-        
-        global printer
-        printer = UniversalPrinterManager()
-        printer.connect(
-            printer_type=new_cfg["type"],
-            address=new_cfg["address"],
-            paper_width=new_cfg.get("paper_width", 80),
-            device_name=new_cfg.get("device_name", ""),
-            cups_name=new_cfg.get("cups_name", None)
-        )
-        print("💾 Printer settings updated")
-        return "OK"
+        try:
+            # ذخیره تنظیمات در config.json
+            with open(CONFIG_PATH, "r") as f:
+                full_config = json.load(f)
+            full_config["printer"] = new_cfg
+            with open(CONFIG_PATH, "w") as f:
+                json.dump(full_config, f, indent=2)
+            config["printer"] = new_cfg
+            
+            # قطع اتصال پرینتر قبلی
+            global printer
+            if printer:
+                printer.disconnect()
+            
+            # اتصال مجدد با تنظیمات جدید
+            printer.auto_connect(
+                preferred_type=new_cfg.get("type", "auto"),
+                address=new_cfg.get("address", None),
+                width=new_cfg.get("paper_width", 80)
+            )
+            
+            print(f"💾 Printer settings updated: {new_cfg}")
+            return "OK"
+        except Exception as e:
+            print(f"❌ Save config error: {e}")
+            import traceback
+            traceback.print_exc()
+            return f"ERROR: {e}"
 
     def test_print(self):
         try:
             print("🧪 Starting test print...")
-            
-            # [Configuration]
             current_config = self.get_config()
             print(f"📋 Using config: {current_config}")
+
+            printer_type = current_config.get("type", "")
             
-            # [Configuration]
-            print("🔧 Testing direct CUPS first...")
-            import subprocess
-            
-            # [Configuration]
-            cups_printer_name = current_config.get("cups_name", "HPRT_TP808")
-            print(f"🖨️ CUPS Printer: {cups_printer_name}")
-            
-            direct_result = subprocess.run([
-                '/usr/bin/lp', '-d', cups_printer_name, '-'
-            ], input="Direct CUPS Test\nFrom DineSysPro\n", 
-            text=True, capture_output=True)
-            
-            if direct_result.returncode == 0:
-                print(f"✅ Direct CUPS successful: {direct_result.stdout}")
-            else:
-                print(f"❌ Direct CUPS failed: {direct_result.stderr}")
-                return f"ERROR: CUPS failed - {direct_result.stderr}"
-            
-            # [Configuration]
-            print("🖨️ Testing Universal Printer Manager...")
-            test_printer = UniversalPrinterManager()
-            
-            # [Configuration]
-            print("🔌 Connecting printer...")
-            connected = test_printer.connect(
-                printer_type=current_config["type"],
+            # برای پرینترهای LAN که در CUPS نصب هستند، ابتدا CUPS را تست می‌کنیم
+            if printer_type == "lan" and current_config.get("cups_name"):
+                import subprocess, shutil
+                cups_printer_name = current_config.get("cups_name")
+                lp_path = shutil.which("lp") or "/usr/bin/lp"
+                print(f"🔧 Testing CUPS with lp path: {lp_path}")
+
+                direct_result = subprocess.run(
+                    [lp_path, "-d", cups_printer_name, "-"],
+                    input="🍕 DineSysPro\nDirect CUPS Test\n",
+                    text=True, capture_output=True
+                )
+                if direct_result.returncode == 0:
+                    print(f"✅ Direct CUPS successful: {direct_result.stdout}")
+                else:
+                    print(f"⚠️ Direct CUPS failed: {direct_result.stderr}")
+                    # Don't return error, continue with PrinterManager
+
+            # استفاده از PrinterManager برای همه انواع پرینتر
+            print("🖨️ Testing PrinterManager connection...")
+            test_printer = PrinterManager()
+            connected = test_printer.auto_connect(
+                preferred_type=current_config["type"],
                 address=current_config["address"],
-                paper_width=current_config.get("paper_width", 80),
-                device_name=current_config.get("device_name", ""),
-                cups_name=current_config.get("cups_name", None)
+                width=current_config.get("paper_width", 80)
             )
-            
+
             if not connected:
-                print("❌ Printer connection failed!")
                 return "ERROR: Printer connection failed"
-            
-            # [Configuration]
-            print("📄 Sending test print...")
-            test_text = "🍕 DineSysPro\nTest Print Successful!\nTime: $(date)\n" + "=" * 25 + "\n"
-            test_printer.print_text(test_text)
-            
-            # [Configuration]
+
+            test_text = "🍕 DineSysPro\nTest Print Successful!\n=========================\n"
+            result = test_printer.print_text(test_text)
             test_printer.disconnect()
             
-            print("✅ Test print executed successfully")
-            return "OK"
-            
+            if result == "OK":
+                print("✅ Test print executed successfully")
+                return "OK"
+            else:
+                print(f"❌ Print failed: {result}")
+                return f"ERROR: {result}"
+
         except Exception as e:
-            error_msg = f"Test print failed: {str(e)}"
-            print(f"❌ {error_msg}")
-            import traceback
-            traceback.print_exc()
-            return f"ERROR: {error_msg}"
+            print(f"❌ Test print failed: {e}")
+            import traceback; traceback.print_exc()
+            return f"ERROR: {e}"
+
+
+# [Configuration]
+class Bridge:
+    def play_alert(self, sound_type="new_order"):
+        global alarm_playing
+        try:
+            sound_file = config["sounds"].get(sound_type, "neworder.mp3")
+            sound_path = resource_path(f"sounds/{sound_file}")
+            pygame.mixer.music.load(sound_path)
+            pygame.mixer.music.play(-1)
+            alarm_playing = True
+            print(f"🔔 Alert started: {sound_type} ({sound_file})")
+            return "OK"
+        except Exception as e:
+            print(f"❌ Alert error: {e}")
+            return f"ERROR: {e}"
+    
+    def playAlert(self, sound_type="new_order"):
+        """Alias for play_alert - برای سازگاری با universal_bridge.js"""
+        return self.play_alert(sound_type)
+
+    def stop_alert(self):
+        global alarm_playing
+        try:
+            pygame.mixer.music.stop()
+            alarm_playing = False
+            print("🔇 Alert stopped")
+            return "OK"
+        except Exception as e:
+            print(f"❌ Stop alert error: {e}")
+            return f"ERROR: {e}"
+    
+    def stopAlert(self):
+        """Alias for stop_alert - برای سازگاری با universal_bridge.js"""
+        return self.stop_alert()
+
+    def open_settings(self):
+        settings_api = SettingsBridge()
+        settings_path = resource_path(os.path.join("ui", "settings.html"))
+        print("⚙️ Opening settings window...")
+        webview.create_window(
+            "⚙️ Settings - DineSysPro",
+            f"file://{settings_path}",
+            js_api=settings_api,
+            width=650, height=900, resizable=True
+        )
+
+    def print_text(self, text):
+        try:
+            print("🖨️ Print command received")
+            result = printer.print_text(text)
+            return "OK" if result == "OK" else f"ERROR: {result}"
+        except Exception as e:
+            print(f"❌ Print error: {e}")
+            return f"ERROR: {e}"
+    
+    def print(self, text):
+        """Alias for print_text - برای سازگاری با universal_bridge.js"""
+        return self.print_text(text)
+
+    def test_print(self):
+        """Triggered from settings.html Test Print button"""
+        try:
+            url = f"http://localhost:{LOCAL_API_PORT}/api/test-print"
+            print(f"🧪 Triggering API test print via {url}")
+            res = requests.post(url, timeout=10)
+            if res.status_code == 200:
+                data = res.json()
+                return "OK" if data.get("success") else f"ERROR: {data.get('error', 'Unknown error')}"
+            return f"ERROR: HTTP {res.status_code}"
+        except Exception as e:
+            print(f"❌ WebView test_print error: {e}")
+            return f"ERROR: {e}"
     
     def save_sound_config(self, sound_config):
         """Save sound configuration"""
@@ -821,333 +880,7 @@ class SettingsBridge:
 
 
 # [Configuration]
-class Bridge:
-    def play_alert(self, sound_type="new_order"):
-        """Function description"""
-        global alarm_playing
-        try:
-            # [Configuration]
-            sound_file = config["sounds"].get(sound_type, "neworder.mp3")
-            sound_path = resource_path(f"sounds/{sound_file}")
-            
-            pygame.mixer.music.load(sound_path)
-            pygame.mixer.music.play(-1)  # infinite loop
-            alarm_playing = True
-            print(f"🔔 Alert sound started: {sound_type} ({sound_file})")
-            return "OK"
-        except Exception as e:
-            print(f"❌ Alert error: {e}")
-            return f"ERROR: {e}"
-
-    def stop_alert(self):
-        global alarm_playing
-        try:
-            pygame.mixer.music.stop()
-            alarm_playing = False
-            print("🔇 Alert sound stopped")
-            return "OK"
-        except Exception as e:
-            print(f"❌ Stop alert error: {e}")
-            return f"ERROR: {e}"
-
-    def print_text(self, text):
-        """Function description"""
-        try:
-            print("🖨️ Print command received")
-            print("📄 Print text content:")
-            print("=" * 50)
-            print(text)
-            print("=" * 50)
-
-            # [Configuration]
-            print("🚀 Using SAME METHOD as successful test_print...")
-            
-            # [Configuration]
-            current_config = config["printer"]
-            paper_width = current_config.get("paper_width", 80)
-            
-            # [Configuration]
-            if paper_width == 58:
-                max_chars = 32  # Paper 58 [SV/EN]‌[SV/EN]
-                print("📏 Using 58mm paper width (32 chars per line)")
-            else:  # 80mm default
-                max_chars = 48  # Paper 80 [SV/EN]‌[SV/EN]  
-                print("📏 Using 80mm paper width (48 chars per line)")
-            
-            # [Configuration]
-            formatted_lines = []
-            for line in text.split('\n'):
-                if len(line) <= max_chars:
-                    formatted_lines.append(line)
-                else:
-                    # [Configuration]
-                    while len(line) > max_chars:
-                        formatted_lines.append(line[:max_chars])
-                        line = line[max_chars:]
-                    if line:  # [SV/EN]‌[SV/EN]
-                        formatted_lines.append(line)
-            
-            formatted_text = '\n'.join(formatted_lines)
-            
-            # [Configuration]
-            print("🔧 Using direct CUPS method like test_print...")
-            import subprocess
-            import tempfile
-            import os
-            
-            # [Configuration]
-            # [Configuration]
-            if current_config["type"] == "lan":
-                print("🚀 Using RAW printing directly to LAN printer...")
-                try:
-                    import socket
-                    
-                    # [Configuration]
-                    printer_ip = current_config["address"]
-                    print(f"📡 Connecting to printer at {printer_ip}:9100")
-                    
-                    # [Configuration]
-                    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                    sock.settimeout(10)
-                    sock.connect((printer_ip, 9100))
-                    
-                    # [Configuration]
-                    ESC = b'\x1b'  # Escape character
-                    GS = b'\x1d'   # Group separator
-                    
-                    # [Configuration]
-                    init_cmd = ESC + b'@'  # Reset printer
-                    
-                    # [Configuration]
-                    # ESC R n - Select international character set
-                    # n = 7: Nordic (Sweden, Finland)
-                    select_nordic_charset = ESC + b'R' + b'\x07'
-                    
-                    # [Configuration]
-                    # ESC t n - Select character code table
-                    # n = 5: PC850 (Multilingual)
-                    select_codepage_850 = ESC + b't' + b'\x05'
-                    
-                    print("🔧 Setting ESC/POS Character Set for Swedish (åäö)...")
-                    
-                    # [Configuration]
-                    emoji_map = {
-                        '🚚': '', '✔️': 'OK', '🧾': '', 
-                        '🎯': '*', '🎊': '',
-                        '━': '-', '¨': '~',
-                    }
-                    
-                    text_clean = formatted_text
-                    for emoji, replacement in emoji_map.items():
-                        text_clean = text_clean.replace(emoji, replacement)
-                    
-                    # [Configuration]
-                    try:
-                        text_bytes = text_clean.encode('cp850', errors='replace')
-                        print(f"📝 Using CP850 encoding: {len(text_bytes)} bytes (Nordic characters supported)")
-                    except:
-                        # [Configuration]
-                        try:
-                            text_bytes = text_clean.encode('iso-8859-1', errors='replace')
-                            print(f"📝 Fallback to ISO-8859-1: {len(text_bytes)} bytes")
-                        except:
-                            text_bytes = text_clean.encode('ascii', errors='replace')
-                            print(f"📝 Fallback to ASCII: {len(text_bytes)} bytes")
-                    
-                    # [Configuration]
-                    feed_lines = b'\n\n\n\n\n\n'  # 6 [SV/EN] [SV/EN] [SV/EN] [SV/EN]
-                    cut_cmd = GS + b'V' + b'\x00'  # Full cut command
-                    
-                    # [Configuration]
-                    raw_data = init_cmd + select_nordic_charset + select_codepage_850 + text_bytes + feed_lines + cut_cmd
-                    
-                    print(f"📄 Sending {len(raw_data)} bytes to printer with ESC/POS commands")
-                    sock.send(raw_data)
-                    sock.close()
-                    
-                    print("✅ RAW print data sent directly to printer!")
-                    
-                    # [Configuration]
-                    self.stop_alert()
-                    print("✅ Print completed successfully")
-                    return "OK"
-                    
-                except Exception as raw_error:
-                    print(f"❌ RAW printing failed: {raw_error}")
-                    # [Configuration]
-            
-            # [Configuration]
-            print("🔄 Using CUPS printing...")
-            
-            # [Configuration]
-            cups_printer_name = current_config.get("cups_name", "HPRT_TP808")
-            print(f"🖨️ CUPS Printer: {cups_printer_name}")
-            
-            # [Configuration]
-            if current_config["type"] == "usb":
-                print("📦 Using CHUNKED printing for USB (buffer limitation fix)...")
-                import time
-                
-                # [Configuration]
-                lines = formatted_text.split('\n')
-                total_lines = len(lines)
-                chunk_size = 6  # [SV/EN] [SV/EN] 6 [SV/EN]
-                
-                print(f"📏 Total lines: {total_lines}, chunk size: {chunk_size}")
-                
-                success_count = 0
-                for chunk_start in range(0, total_lines, chunk_size):
-                    chunk_end = min(chunk_start + chunk_size, total_lines)
-                    chunk_lines = lines[chunk_start:chunk_end]
-                    chunk_text = '\n'.join(chunk_lines) + '\n'
-                    
-                    print(f"🔄 Chunk {chunk_start//chunk_size + 1}: lines {chunk_start+1}-{chunk_end}")
-                    
-                    # [Configuration]
-                    with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.txt', encoding='utf-8') as tmp_file:
-                        tmp_file.write(chunk_text)
-                        tmp_file.flush()
-                        tmp_file_path = tmp_file.name
-                    
-                    try:
-                        chunk_result = subprocess.run([
-                            '/usr/bin/lp', '-d', cups_printer_name, tmp_file_path
-                        ], capture_output=True, text=True, timeout=30)
-                        
-                        if chunk_result.returncode == 0:
-                            success_count += 1
-                            print(f"✅ Chunk {chunk_start//chunk_size + 1} sent")
-                        else:
-                            print(f"❌ Chunk {chunk_start//chunk_size + 1} failed: {chunk_result.stderr}")
-                    finally:
-                        try:
-                            os.unlink(tmp_file_path)
-                        except:
-                            pass
-                    
-                    # [Configuration]
-                    if chunk_end < total_lines:
-                        time.sleep(0.2)
-                
-                # [Configuration]
-                final_cut = '\n\n\n\n\n\n'
-                with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.txt', encoding='utf-8') as tmp_file:
-                    tmp_file.write(final_cut)
-                    tmp_file.flush()
-                    tmp_file_path = tmp_file.name
-                
-                try:
-                    subprocess.run([
-                        '/usr/bin/lp', '-d', cups_printer_name, tmp_file_path
-                    ], capture_output=True, text=True, timeout=30)
-                finally:
-                    try:
-                        os.unlink(tmp_file_path)
-                    except:
-                        pass
-                
-                if success_count > 0:
-                    print(f"✅ CUPS chunked print successful: {success_count} chunks")
-                    self.stop_alert()
-                    print("✅ Print completed successfully")
-                    return "OK"
-                else:
-                    print(f"❌ All chunks failed")
-                    return "ERROR: Print failed"
-            
-            else:
-                # [Configuration]
-                print("📄 Using DIRECT printing for LAN/Bluetooth...")
-                with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.txt', encoding='utf-8') as tmp_file:
-                    tmp_file.write(formatted_text + '\n\n')
-                    tmp_file.flush()
-                    tmp_file_path = tmp_file.name
-                
-                try:
-                    direct_result = subprocess.run([
-                        '/usr/bin/lp', '-d', cups_printer_name, tmp_file_path
-                    ], capture_output=True, text=True, timeout=30)
-                    
-                    if direct_result.returncode == 0:
-                        print(f"✅ CUPS print successful: {direct_result.stdout}")
-                        self.stop_alert()
-                        print("✅ Print completed successfully")
-                        return "OK"
-                    else:
-                        print(f"❌ CUPS failed: {direct_result.stderr}")
-                        
-                finally:
-                    try:
-                        os.unlink(tmp_file_path)
-                    except:
-                        pass
-            
-            return "ERROR: Print failed after all attempts"
-            
-        except Exception as e:
-            print(f"❌ Print error: {e}")
-            import traceback
-            traceback.print_exc()
-            return f"ERROR: {e}"
-    
-    # [Configuration]
-    def print(self, text):
-        """Function description"""
-        return self.print_text(text)
-    
-    def playAlert(self):
-        """Function description"""
-        return self.play_alert()
-    
-    def stopAlert(self):
-        """Function description"""
-        return self.stop_alert()
-
-    def open_settings(self):
-        """Function description"""
-        settings_api = SettingsBridge()
-        settings_path = resource_path(os.path.join("ui", "settings.html"))
-        print("⚙️ Opening settings:", settings_path)
-        webview.create_window(
-            "⚙️ Settings - DineSysPro",
-            f"file://{settings_path}",
-            js_api=settings_api,
-            width=650,
-            height=900,
-            fullscreen=False,
-            resizable=True
-        )
-    
-    def check_for_updates(self):
-        """Check for updates from GitHub"""
-        try:
-            from auto_updater import check_for_updates
-            update_info = check_for_updates(silent=True)
-            return update_info
-        except Exception as e:
-            print(f"❌ Update check failed: {e}")
-            return {
-                'available': False,
-                'error': str(e)
-            }
-    
-    def download_update(self):
-        """Download and install update"""
-        try:
-            from auto_updater import auto_update
-            # Run in background thread
-            import threading
-            update_thread = threading.Thread(target=auto_update)
-            update_thread.daemon = True
-            update_thread.start()
-            return "Update process started"
-        except Exception as e:
-            print(f"❌ Update download failed: {e}")
-            return f"ERROR: {e}"
-
-
-# [Configuration]
-device_id = get_device_id()
+device_id = "8c4ca5f1ff3fa0f4"#get_device_id()
 final_url = f"{APP_URL}?device_id={device_id}"
 
 def on_loaded():

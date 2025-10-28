@@ -1,340 +1,328 @@
-# printer_manager.py
+import os
+import glob
+import socket
+import usb.core
+import usb.util
 from escpos import printer
 
+SUPPORTED_CODEPAGES = {
+    "default": b'\x12',   # CP858
+    "epson": b'\x02',     # CP850
+    "star": b'\x12',      # CP858
+    "hprt": b'\x12',      # CP858 (tested OK)
+    "xprinter": b'\x12',  # CP858
+    "bixolon": b'\x02',   # CP850
+}
+
+COMMON_USB_PRINTERS = [
+    (0x20d1, 0x7009, "HPRT TP808"),
+    (0x20d1, 0x7007, "Xprinter XP-58"),
+    (0x04b8, 0x0202, "Epson TM-T20"),
+    (0x04b8, 0x0005, "Epson TMT20II"),
+    (0x1504, 0x0006, "Sewoo LK-P21"),
+    (0x0519, 0x0001, "Star TSP100"),
+    (0x0519, 0x0020, "Star mC-Print2"),
+    (0x0519, 0x0021, "Star mC-Print3"),
+    (0x0dd4, 0x0006, "Generic Thermal Printer"),
+]
+
+
 class PrinterManager:
-    def __init__(self, mode="lan", address=None, width=80):
+    def __init__(self, mode="auto", address=None, width=80, brand="auto"):
         self.mode = mode
         self.address = address
         self.width = width
+        self.brand = brand.lower()
         self.prn = None
+        self.usb_device = None
+        self.usb_raw_device = None  # برای USB direct access
+        self.usb_endpoint_out = None
+        self.file_path = None
 
-    def connect(self):
-        try:
-            if self.mode == "lan":
-                self.prn = printer.Network(self.address)
-            elif self.mode == "usb":
-                # Use CUPS for USB printers on macOS/Linux
-                try:
-                    # Try using CUPS printer name first
-                    if hasattr(printer, 'CupsPrinter'):
-                        # Search for HPRT TP808 printer
-                        self.prn = printer.CupsPrinter("HPRT TP808")
-                        print("🖨️ Connected via CUPS: HPRT TP808")
-                    else:
-                        raise Exception("CUPS not available")
-                except:
-                    try:
-                        # Fallback to File printer (for macOS)
-                        self.prn = printer.File("/dev/usb/lp0")
-                        print("🔌 Connected via File interface")
-                    except:
-                        # Final fallback to direct USB
-                        if ':' in str(self.address):
-                            vendor_id, product_id = self.address.split(':')
-                            
-                            # Use appropriate backend for macOS
-                            import usb.core
-                            import usb.backend.libusb1
-                            
-                            # Set backend
-                            backend = usb.backend.libusb1.get_backend()
-                            
-                            self.prn = printer.Usb(
-                                int(vendor_id, 16), 
-                                int(product_id, 16),
-                                usb_args={'custom_match': lambda d: True}
-                            )
-                            print(f"🔌 USB Direct: {vendor_id}:{product_id}")
-                        else:
-                            # Auto-detect printer
-                            import usb.core
-                            device = usb.core.find(idVendor=0x20d1, idProduct=0x7009)
-                            if device:
-                                self.prn = printer.Usb(0x20d1, 0x7009)
-                                print("🔌 Auto-detected HPRT TP808")
-                            else:
-                                raise Exception("USB printer not found")
-            elif self.mode == "bluetooth":
-                self.prn = printer.Bluetooth(self.address)
-            else:
-                print("⚠️ Unknown printer mode. Using network fallback.")
-                self.prn = printer.Network("192.168.1.50")
-            print("✅ Printer connected successfully.")
-        except Exception as e:
-            print("❌ Printer connection failed:", e)
+    def auto_connect(self, preferred_type="auto", address=None, width=80):
+        """Auto-detect and connect to printer"""
+        self.width = width
+        self.address = address
+        self.mode = preferred_type or "auto"
 
-    def print_text(self, text):
-        if not self.prn:
-            print("⚠️ Printer not connected.")
-            return
-        try:
-            # Print settings for newer python-escpos versions
-            try:
-                # New version
-                self.prn.set(align="left", font="a", bold=True)
-            except TypeError:
-                # Old version
-                self.prn.set(align="left", font="a", text_type="B")
+        print("🖨️ Auto-connecting to printer...")
+
+        usb_printer = self._find_usb_printer()
+        if usb_printer:
+            vid, pid, name = usb_printer
+            print(f"🔌 Found USB printer: {name} ({hex(vid)}:{hex(pid)})")
             
-            if self.width == 58:
-                max_chars = 32
-            else:
-                max_chars = 48
+            # راه حل اول: استفاده مستقیم از PyUSB
+            try:
+                dev = usb.core.find(idVendor=vid, idProduct=pid)
+                if dev is None:
+                    raise ValueError("Device not found")
                 
-            lines = text.split("\n")
-            for line in lines:
-                if line.strip():  # Only non-empty lines
-                    self.prn.text(line[:max_chars] + "\n")
-                else:
-                    self.prn.text("\n")  # Empty line
-            
-            # Add empty line at the end
-            self.prn.text("\n")
-            
-            # Cut paper
-            try:
-                self.prn.cut()
-            except:
-                # Try partial cut if full cut doesn't work
+                # Detach kernel driver if needed
                 try:
-                    self.prn.cut(mode='PART')
+                    if dev.is_kernel_driver_active(0):
+                        print("🔧 Detaching kernel driver...")
+                        dev.detach_kernel_driver(0)
                 except:
-                    print("⚠️ Paper cut not supported")
+                    pass
+                
+                # Set configuration
+                try:
+                    dev.set_configuration()
+                except:
+                    pass
+                
+                # پیدا کردن bulk OUT endpoint
+                cfg = dev.get_active_configuration()
+                intf = cfg[(0, 0)]
+                
+                ep_out = None
+                for ep in intf:
+                    if usb.util.endpoint_direction(ep.bEndpointAddress) == usb.util.ENDPOINT_OUT:
+                        ep_out = ep
+                        break
+                
+                if ep_out:
+                    self.usb_raw_device = dev
+                    self.usb_endpoint_out = ep_out.bEndpointAddress
+                    self.usb_device = usb_printer
+                    self.mode = "usb"
+                    self.brand = self._detect_brand_from_name(name)
+                    print(f"✅ USB printer connected via PyUSB: {name} (endpoint: {hex(self.usb_endpoint_out)})")
+                    return True
+                else:
+                    print("⚠️ No OUT endpoint found")
+            except Exception as e:
+                print(f"⚠️ PyUSB direct connection failed: {e}")
+            
+            # راه حل دوم: استفاده از python-escpos
+            print("🔄 Trying python-escpos fallback...")
+            endpoint_configs = [
+                (0x81, 0x02),
+                (0x82, 0x02),
+                (0x81, 0x03),
+                (None, None),
+            ]
+            
+            for in_ep, out_ep in endpoint_configs:
+                try:
+                    if in_ep and out_ep:
+                        self.prn = printer.Usb(vid, pid, in_ep=in_ep, out_ep=out_ep)
+                        print(f"✅ USB printer connected via escpos: {name} (in={hex(in_ep)}, out={hex(out_ep)})")
+                    else:
+                        self.prn = printer.Usb(vid, pid)
+                        print(f"✅ USB printer connected via escpos: {name} (auto-detect)")
                     
-            print("🖨️ Print successful.")
-        except Exception as e:
-            print("❌ Print error:", e)
+                    self.usb_device = usb_printer
+                    self.mode = "usb"
+                    self.brand = self._detect_brand_from_name(name)
+                    return True
+                except Exception as e:
+                    if in_ep and out_ep:
+                        print(f"⚠️ escpos failed with in={hex(in_ep)}, out={hex(out_ep)}: {e}")
+                    else:
+                        print(f"⚠️ escpos failed with auto-detect: {e}")
+                    continue
+            
+            print("❌ All USB connection methods failed")
 
-    def close(self):
-        try:
-            if self.prn:
-                self.prn.close()
-        except:
-            pass
-import socket
-import asyncio
-import threading
-from concurrent.futures import ThreadPoolExecutor
+        serial_path = self._find_serial_printer()
+        if serial_path:
+            try:
+                self.prn = printer.File(serial_path)
+                self.mode = "file"
+                self.file_path = serial_path
+                self.brand = self._detect_brand_from_name(serial_path)
+                print(f"✅ Connected via serial port: {serial_path}")
+                return True
+            except Exception as e:
+                print("❌ Serial printer connect failed:", e)
 
-def get_local_ip_range():
-    """Detect local IP range"""
-    try:
-        # Temporary connection to detect local IP
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        s.settimeout(0)
-        s.connect(('10.254.254.254', 1))
-        local_ip = s.getsockname()[0]
-        s.close()
-        # Extract first three parts of IP (e.g., 192.168.1)
-        return '.'.join(local_ip.split('.')[:-1]) + '.'
-    except:
-        return '192.168.1.'
+        if address:
+            try:
+                self.prn = printer.Network(address)
+                self.mode = "lan"
+                self.brand = self.detect_brand()
+                print(f"✅ Connected to LAN printer ({address})")
+                return True
+            except Exception as e:
+                print("❌ LAN connect failed:", e)
 
-def scan_ip(ip, port, timeout):
-    """Scan a specific IP address"""
-    try:
-        s = socket.socket()
-        s.settimeout(timeout)
-        s.connect((ip, port))
-        s.close()
-        return ip
-    except:
+        print("❌ No printer found")
+        return False
+
+    def _find_usb_printer(self):
+        for vid, pid, name in COMMON_USB_PRINTERS:
+            dev = usb.core.find(idVendor=vid, idProduct=pid)
+            if dev:
+                return (vid, pid, name)
         return None
 
-def discover_lan_printers(port=9100, timeout=1.0):
-    """Smart LAN scan for active printers - using Thread Pool"""
-    found = []
-    print("🌐 Scanning LAN printers...")
-    
-    # Detect local IP range
-    subnet = get_local_ip_range()
-    print(f"🔍 Scanning subnet: {subnet}*")
-    
-    # List of common IPs for faster scan
-    common_ips = [1, 10, 20, 50, 100, 101, 102, 150, 200, 254]
-    all_ips = common_ips + [i for i in range(1, 255) if i not in common_ips]
-    
-    # Use Thread Pool for efficient scanning
-    with ThreadPoolExecutor(max_workers=50) as executor:
-        futures = []
-        for i in all_ips:
-            ip = f"{subnet}{i}"
-            future = executor.submit(scan_ip, ip, port, timeout)
-            futures.append(future)
-        
-        # Collect results
-        for future in futures:
-            result = future.result()
-            if result:
-                found.append(result)
-                print(f"✅ Found printer at: {result}")
-    
-    print(f"🖨️ Found {len(found)} LAN printers total")
-    return found
+    def _find_serial_printer(self):
+        serial_ports = glob.glob("/dev/tty.usb*") + glob.glob("/dev/ttyUSB*")
+        return serial_ports[0] if serial_ports else None
 
-def discover_bluetooth_printers(show_all=True):
-    """List available Bluetooth devices - compatible with macOS/Windows/Linux"""
-    found = []
-    all_devices = []
-    print("🔵 Scanning Bluetooth devices...")
-    print("⏳ This may take 15-20 seconds...")
-    print("💡 Make sure your Star printer is turned on and paired!")
-    
-    try:
-        # Use bleak for BLE scan (Bluetooth Low Energy)
+    def _detect_brand_from_name(self, name: str):
+        name = name.lower()
+        for brand in ["hprt", "star", "epson", "xprinter", "bixolon"]:
+            if brand in name:
+                print(f"🤖 Detected brand: {brand}")
+                return brand
+        return "default"
+
+    def detect_brand(self):
+        if self.brand != "auto":
+            return self.brand
         try:
-            from bleak import BleakScanner
-            print("📱 Scanning BLE devices...")
-            devices = asyncio.run(BleakScanner.discover(timeout=15))
-            print(f"📱 Found {len(devices)} BLE devices total")
-            
-            for d in devices:
-                device_name = d.name if d.name else "Unknown Device"
-                device_info = f"BLE: {d.address} - {device_name}"
-                all_devices.append(device_info)
-                
-                # Add to found if it looks like a printer
-                name_lower = d.name.lower() if d.name else ""
-                
-                # Blacklist non-printer devices
-                blacklist = ['jbl', 'bose', 'sony', 'beats', 'airpods', 'headphone', 'speaker', 'party']
-                is_blacklisted = any(word in name_lower for word in blacklist)
-                
-                # Check for printer keywords or model patterns
-                is_printer = (
-                    any(keyword in name_lower for keyword in 
-                        ['print', 'epson', 'canon', 'hp', 'brother', 'star', 'hprt', 'pos', 'thermal', 'receipt']) or
-                    ('series' in name_lower and not is_blacklisted) or  # Many printers have "Series" in name
-                    any(model in name_lower for model in 
-                        ['mc-print', 'mcp', 'tsp', 'sm-l', 'sm-s', 'sm-t']) or  # Star printer models
-                    any(f'{brand}-' in name_lower or f'{brand} ' in name_lower for brand in 
-                        ['et', 'wf', 'xp', 'tm', 'mc', 'sm'])  # Common printer model prefixes (removed 'l' - too generic)
-                )
-                
-                if is_printer and not is_blacklisted:
-                    found.append(device_info)
-                    print(f"  ✅ Printer found: {device_info}")
-            
-        except ImportError:
-            print("⚠️ Bleak not installed - BLE scanning not available")
-            print("💡 Install with: pip install bleak")
+            if self.mode == "lan" and self.address:
+                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                sock.settimeout(2)
+                sock.connect((self.address, 9100))
+                sock.send(b'\x1b@')
+                sock.send(b'\x1d(I\x02\x00')
+                data = sock.recv(128).decode(errors='ignore').lower()
+                sock.close()
+                for brand in ["epson", "star", "hprt", "xprinter", "bixolon"]:
+                    if brand in data:
+                        self.brand = brand
+                        print(f"🤖 Detected brand: {brand}")
+                        return brand
         except Exception as e:
-            print(f"⚠️ BLE scan error: {e}")
+            print("⚠️ Brand auto-detect failed:", e)
+        self.brand = "default"
+        return self.brand
+
+    def print_text(self, text):
+        if not text:
+            return "EMPTY"
         
-        # Use pybluez for classic Bluetooth scan (or system commands as fallback)
+        # چک کردن اتصال (هم PyUSB هم escpos)
+        if not self.prn and not self.usb_raw_device:
+            print("⚠️ Printer not connected — retrying auto-connect...")
+            self.auto_connect(self.mode, self.address, self.width)
+            if not self.prn and not self.usb_raw_device:
+                return "ERROR: No printer connected"
+
+        brand = self.detect_brand()
+        codepage = SUPPORTED_CODEPAGES.get(brand, b'\x12')
+
+        ESC = b'\x1b'
+        GS = b'\x1d'
+        init = ESC + b'@'
+        charset_sweden = ESC + b'R' + b'\x06'
+        select_codepage = ESC + b't' + codepage
+
+        emoji_map = {'🚚': '', '✔️': 'OK', '🍕': '*', '🎊': '', '🧾': '', '━': '-', '¨': '~', '…': '...'}
+        text_clean = text
+        for e, r in emoji_map.items():
+            text_clean = text_clean.replace(e, r)
+
+        text_bytes = text_clean.encode("cp858", errors="replace")
+        feed = b'\n\n\n\n'
+        cut = GS + b'V' + b'\x00'
+        raw_data = init + charset_sweden + select_codepage + text_bytes + feed + cut
+
         try:
-            import bluetooth
-            print("📶 Scanning Classic Bluetooth devices...")
-            nearby_devices = bluetooth.discover_devices(duration=15, lookup_names=True, flush_cache=True)
-            print(f"📶 Found {len(nearby_devices)} Classic Bluetooth devices")
+            if self.mode == "lan" and self.address:
+                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                sock.settimeout(5)
+                sock.connect((self.address, 9100))
+                sock.sendall(raw_data)
+                sock.close()
+                print(f"✅ LAN print OK ({brand})")
+                return "OK"
             
-            for addr, name in nearby_devices:
-                device_name = name if name else "Unknown Device"
-                device_info = f"Classic: {addr} - {device_name}"
-                all_devices.append(device_info)
+            elif self.mode == "usb":
+                # روش اول: PyUSB مستقیم (بهترین روش برای HPRT)
+                if self.usb_raw_device and self.usb_endpoint_out:
+                    try:
+                        self.usb_raw_device.write(self.usb_endpoint_out, raw_data)
+                        print(f"✅ USB print OK via PyUSB ({brand})")
+                        return "OK"
+                    except Exception as e:
+                        print(f"⚠️ PyUSB write failed: {e}")
+                        # ادامه به روش بعدی
                 
-                # Add to found if it looks like a printer
-                name_lower = name.lower() if name else ""
+                # روش دوم: python-escpos
+                if self.prn:
+                    try:
+                        self.prn._raw(raw_data)
+                        print(f"✅ USB print OK via escpos ({brand})")
+                        return "OK"
+                    except Exception as e:
+                        print(f"⚠️ escpos write failed: {e}")
+                        return f"ERROR: {e}"
                 
-                # Blacklist non-printer devices
-                blacklist = ['jbl', 'bose', 'sony', 'beats', 'airpods', 'headphone', 'speaker', 'party']
-                is_blacklisted = any(word in name_lower for word in blacklist)
+                return "ERROR: No USB connection available"
+            
+            elif self.mode == "file" and self.file_path:
+                with open(self.file_path, "wb") as f:
+                    f.write(raw_data)
+                print(f"✅ Serial print OK ({brand})")
+                return "OK"
+            
+            elif self.prn:
+                self.prn._raw(raw_data)
+                print(f"✅ Generic print OK ({brand})")
+                return "OK"
+            
+            else:
+                return "ERROR: No printer connected"
                 
-                is_printer = (
-                    any(keyword in name_lower for keyword in 
-                        ['print', 'epson', 'canon', 'hp', 'brother', 'star', 'hprt', 'pos', 'thermal', 'receipt']) or
-                    ('series' in name_lower and not is_blacklisted) or
-                    any(model in name_lower for model in 
-                        ['mc-print', 'mcp', 'tsp', 'sm-l', 'sm-s', 'sm-t']) or
-                    any(f'{brand}-' in name_lower or f'{brand} ' in name_lower for brand in 
-                        ['et', 'wf', 'xp', 'tm', 'mc', 'sm'])
-                )
-                
-                if is_printer and not is_blacklisted:
-                    found.append(device_info)
-                    print(f"  ✅ Printer found: {device_info}")
-                    
-        except ImportError:
-            # Fallback to macOS system_profiler for paired Bluetooth devices
-            print("📶 Using macOS system_profiler for Bluetooth devices...")
-            try:
-                import subprocess
-                import re
-                result = subprocess.run(
-                    ['system_profiler', 'SPBluetoothDataType', '-json'],
-                    capture_output=True,
-                    text=True,
-                    timeout=10
-                )
-                
-                if result.returncode == 0:
-                    import json
-                    bt_data = json.loads(result.stdout)
-                    
-                    # Parse connected devices
-                    devices_section = bt_data.get('SPBluetoothDataType', [])
-                    for item in devices_section:
-                        devices = item.get('device_connected', [])
-                        for device in devices:
-                            for device_name, device_info_dict in device.items():
-                                if isinstance(device_info_dict, dict):
-                                    addr = device_info_dict.get('device_address', 'Unknown')
-                                    device_info = f"macOS-BT: {addr} - {device_name}"
-                                    all_devices.append(device_info)
-                                    
-                                    # Check if it's a printer
-                                    name_lower = device_name.lower()
-                                    blacklist = ['jbl', 'bose', 'sony', 'beats', 'airpods', 'headphone', 'speaker', 'party']
-                                    is_blacklisted = any(word in name_lower for word in blacklist)
-                                    
-                                    is_printer = (
-                                        any(keyword in name_lower for keyword in 
-                                            ['print', 'epson', 'canon', 'hp', 'brother', 'star', 'hprt', 'pos', 'thermal', 'receipt']) or
-                                        ('series' in name_lower and not is_blacklisted) or
-                                        any(model in name_lower for model in 
-                                            ['mc-print', 'mcp', 'tsp', 'sm-l', 'sm-s', 'sm-t']) or
-                                        any(f'{brand}-' in name_lower or f'{brand} ' in name_lower for brand in 
-                                            ['et', 'wf', 'xp', 'tm', 'mc', 'sm'])
-                                    )
-                                    
-                                    if is_printer and not is_blacklisted:
-                                        found.append(device_info)
-                                        print(f"  ✅ Printer found: {device_info}")
-                    
-                    print(f"📶 Found {len(devices)} connected Bluetooth devices via system_profiler")
-                else:
-                    print("⚠️ Failed to get Bluetooth info from system_profiler")
-            except Exception as e:
-                print(f"⚠️ macOS system_profiler error: {e}")
         except Exception as e:
-            print(f"⚠️ Classic Bluetooth scan error: {e}")
+            print("❌ Print failed:", e)
             import traceback
             traceback.print_exc()
-        
-    except Exception as e:
-        print(f"❌ Bluetooth scan failed: {e}")
-        import traceback
-        traceback.print_exc()
-    
-    print(f"\n📊 Summary:")
-    print(f"  - Total devices found: {len(all_devices)}")
-    print(f"  - Potential printers: {len(found)}")
-    
-    # If no printers found but devices exist, show all devices
-    if not found and all_devices:
-        print("\n💡 No printers detected automatically. Showing all Bluetooth devices:")
-        for device in all_devices:
-            print(f"  • {device}")
-        return all_devices
-    elif found:
-        print("\n✅ Printers detected:")
-        for printer in found:
-            print(f"  • {printer}")
+            return f"ERROR: {e}"
+
+    def disconnect(self):
+        try:
+            # بستن escpos printer
+            if self.prn:
+                self.prn.close()
+            
+            # آزاد کردن USB device
+            if self.usb_raw_device:
+                try:
+                    usb.util.dispose_resources(self.usb_raw_device)
+                except:
+                    pass
+            
+            print("🔌 Printer disconnected")
+            self.prn = None
+            self.usb_raw_device = None
+            self.usb_endpoint_out = None
+        except Exception as e:
+            print(f"⚠️ Disconnect error: {e}")
+
+
+# LAN discovery
+def discover_lan_printers(subnet="192.168.1.", port=9100, timeout=0.3):
+    found = []
+    print("🌐 Scanning LAN printers...")
+    for i in range(1, 255):
+        ip = f"{subnet}{i}"
+        try:
+            s = socket.socket()
+            s.settimeout(timeout)
+            s.connect((ip, port))
+            found.append(ip)
+            s.close()
+        except:
+            pass
+    print(f"✅ Found {len(found)} LAN printers")
+    return found
+
+
+# Bluetooth discovery
+def discover_bluetooth_printers():
+    try:
+        import bluetooth
+        print("🔵 Scanning Bluetooth printers...")
+        nearby_devices = bluetooth.discover_devices(duration=6, lookup_names=True)
+        found = [f"{addr} - {name}" for addr, name in nearby_devices]
+        print(f"✅ Found {len(found)} Bluetooth devices")
         return found
-    else:
-        print("\n❌ No Bluetooth devices found")
-        print("💡 Make sure:")
-        print("  1. Bluetooth is enabled on your computer")
-        print("  2. The printer is turned on and in pairing mode")
-        print("  3. The printer is within range")
-        return ["No Bluetooth devices found"]
+    except Exception as e:
+        print("⚠️ Bluetooth scan error:", e)
+        return []
