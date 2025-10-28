@@ -136,7 +136,12 @@ jobs:
           body: |
             ## DineSysPro v${{ github.ref_name }}
             
-            ### ✨ New Features & Fixes (v1.0.5)
+            ### ✨ New Features & Fixes (v1.0.6)
+            - **Fixed:** Critical Windows crash - Added missing 'webview' module to PyInstaller build
+            - **Fixed:** macOS build stability improvements
+            - All GUI features now work correctly on both Windows and macOS
+            
+            ### 🔧 Previous Features (v1.0.5)
             - **Fixed:** Epson office printer support (ET/WF/XP series)
             - **Fixed:** CPU error when printing to Epson multi-function printers
             - Added intelligent printer type detection (POS vs Office)

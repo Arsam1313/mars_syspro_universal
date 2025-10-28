@@ -19,7 +19,7 @@ import os
 import shutil
 
 APP_NAME = "DineSysPro"
-VERSION = "1.0.5"
+VERSION = "1.0.6"
 MAIN_SCRIPT = "main.py"
 ICON_PATH = "icon/logo_dinesyspro.ico"
 DIST_PATH = "dist"
@@ -72,6 +72,7 @@ def build_exe():
     
     # Hidden imports
     hidden_imports = [
+        'webview',  # pywebview for GUI
         'pygame',
         'escpos',
         'escpos.capabilities',

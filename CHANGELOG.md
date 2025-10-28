@@ -17,6 +17,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.0.6] - 2024-10-28
+
+### Fixed
+- ✅ **Critical:** Windows crash on startup - Added missing 'webview' module to PyInstaller build
+- ✅ macOS build stability - Added 'webview' to hidden imports
+- ✅ GUI now works correctly on both Windows and macOS platforms
+
+### Changed
+- ✅ Updated PyInstaller configuration for both platforms
+- ✅ Improved module detection for bundled application
+
+---
+
 ## [1.0.5] - 2024-10-27
 
 ### Fixed
