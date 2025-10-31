@@ -593,7 +593,7 @@ def get_device_id():
 
 def get_device_info():
     return {
-        "device_id": "8c4ca5f1ff3fa0f4",#get_device_id(),
+        "device_id": get_device_id(),
         "device_info": {
             "platform": platform.system(),
             "system": "python-desktop",
@@ -880,7 +880,7 @@ class Bridge:
 
 
 # [Configuration]
-device_id = "8c4ca5f1ff3fa0f4"#get_device_id()
+device_id = get_device_id()
 final_url = f"{APP_URL}?device_id={device_id}"
 
 def on_loaded():
