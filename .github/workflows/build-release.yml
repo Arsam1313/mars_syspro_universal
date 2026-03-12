@@ -1,0 +1,183 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'  # Only on version tags (e.g., v1.0.0)
+  workflow_dispatch:  # Manual trigger
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  build-macos-arm:
+    runs-on: macos-14  # Apple Silicon (M1/M2/M3)
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install pyinstaller
+      
+      - name: Build macOS app (ARM64)
+        run: python3 build_macos.py
+      
+      - name: Remove quarantine from .app
+        run: |
+          xattr -cr dist/DineSysPro.app || true
+          xattr -cr dist/*.dmg || true
+      
+      - name: Rename DMG for ARM
+        run: |
+          if [ -f dist/DineSysPro-1.0.5-macOS.dmg ]; then
+            mv dist/DineSysPro-1.0.5-macOS.dmg dist/DineSysPro-1.0.5-macOS-ARM64.dmg
+          fi
+      
+      - name: Upload macOS ARM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: DineSysPro-macOS-ARM64
+          path: dist/*.dmg
+  
+  build-macos-intel:
+    runs-on: macos-13  # Intel (x86_64)
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install pyinstaller
+      
+      - name: Build macOS app (Intel)
+        run: python3 build_macos.py
+      
+      - name: Remove quarantine from .app
+        run: |
+          xattr -cr dist/DineSysPro.app || true
+          xattr -cr dist/*.dmg || true
+      
+      - name: Rename DMG for Intel
+        run: |
+          if [ -f dist/DineSysPro-1.0.5-macOS.dmg ]; then
+            mv dist/DineSysPro-1.0.5-macOS.dmg dist/DineSysPro-1.0.5-macOS-Intel.dmg
+          fi
+      
+      - name: Upload macOS Intel artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: DineSysPro-macOS-Intel
+          path: dist/*.dmg
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install pyinstaller
+      
+      - name: Build Windows app
+        run: python build_windows.py
+      
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: DineSysPro-Windows
+          path: dist/*.exe
+
+  create-release:
+    needs: [build-macos-arm, build-macos-intel, build-windows]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      
+      - name: Display structure of downloaded files
+        run: ls -R artifacts
+      
+      - name: Prepare release files
+        run: |
+          mkdir -p release_files
+          find artifacts -type f \( -name "*.dmg" -o -name "*.exe" \) -exec cp {} release_files/ \;
+          ls -la release_files/
+      
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release_files/*
+          draft: false
+          prerelease: false
+          body: |
+            ## DineSysPro v${{ github.ref_name }}
+            
+            ### ✨ New Features & Fixes (v1.0.6)
+            - **Fixed:** Critical Windows crash - Added missing 'webview' module to PyInstaller build
+            - **Fixed:** macOS build stability improvements
+            - All GUI features now work correctly on both Windows and macOS
+            
+            ### 🔧 Previous Features (v1.0.5)
+            - **Fixed:** Epson office printer support (ET/WF/XP series)
+            - **Fixed:** CPU error when printing to Epson multi-function printers
+            - Added intelligent printer type detection (POS vs Office)
+            - Added IPP (Internet Printing Protocol) support for office printers
+            - ESC/POS commands now only sent to thermal POS printers (TM series)
+            
+            ### 🔧 Previous Features (v1.0.4)
+            - Fixed config save error on macOS (Read-only file system)
+            - Config stored in user directory
+            
+            ### 🔧 Previous Features (v1.0.3)
+            - Universal Printer Driver System with auto-detection
+            - Multi-brand printer support (Star, Epson, Citizen, Generic ESC/POS)
+            - Improved Bluetooth printer discovery
+            - Better printer brand detection
+            - RAW driver support for POS printers
+            
+            ### macOS Installation
+            - **Apple Silicon (M1/M2/M3)**: Download `DineSysPro-*-macOS-ARM64.dmg`
+            - **Intel Macs**: Download `DineSysPro-*-macOS-Intel.dmg`
+            
+            After installation, run in Terminal:
+            ```bash
+            xattr -cr /Applications/DineSysPro.app
+            ```
+            
+            ### Windows Installation
+            - Download and run `DineSysPro.exe`
+            
+            ### Supported Printers
+            - Star Micronics (TSP, mC-Print, SM-L/S/T series)
+            - Epson (TM-T, TM-m, TM-P, ET, WF, XP series)
+            - Citizen (CT-S, CL-S, CMP series)
+            - Generic ESC/POS (HPRT, Rongta, Xprinter, Bixolon, Zebra)
+            
+            ### Full Guide
+            For detailed installation instructions, see [INSTALLATIONSGUIDE.md](https://github.com/Arsam1313/mars_syspro_universal/blob/main/INSTALLATIONSGUIDE.md)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

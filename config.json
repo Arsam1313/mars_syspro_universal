@@ -1,0 +1,17 @@
+{
+  "version": "1.0.6",
+  "printer": {
+    "type": "",
+    "address": "",
+    "paper_width": 80,
+    "cups_name": "",
+    "device_name": ""
+  },
+  "app_url": "http://95.217.217.200:3001/order-reception.html",
+  "sounds": {
+    "new_order": "neworder.mp3",
+    "internet_lost": "no_internet_alert.mp3",
+    "low_battery": "low_battery.mp3"
+  },
+  "auto_print_orders": true
+}
